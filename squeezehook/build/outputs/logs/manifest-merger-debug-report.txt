@@ -1,0 +1,44 @@
+-- Merging decision tree log ---
+manifest
+ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:2:1-20:12
+INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:2:1-20:12
+	package
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:3:5-46
+		INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml
+	xmlns:android
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:2:11-69
+application
+ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:5:5-19:19
+INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:5:5-19:19
+	android:extractNativeLibs
+		INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml
+	android:label
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:6:9-39
+	android:hasCode
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:7:9-31
+meta-data#xposedmodule
+ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:9:9-11:36
+	android:value
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:11:13-33
+	android:name
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:10:13-40
+meta-data#xposedminversion
+ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:12:9-14:34
+	android:value
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:14:13-31
+	android:name
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:13:13-44
+meta-data#xposeddescription
+ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:15:9-17:89
+	android:value
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:17:13-86
+	android:name
+		ADDED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml:16:13-45
+uses-sdk
+INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml
+INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from G:\android_projects\lifelogger\squeezehook\src\main\AndroidManifest.xml

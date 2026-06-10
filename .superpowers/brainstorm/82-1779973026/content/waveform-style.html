@@ -1,0 +1,90 @@
+<h2>Waveform visual style</h2>
+<p class="subtitle">How should the live waveform look while playing? It's shown small — just enough to see speaking activity and silence.</p>
+
+<div class="cards">
+  <div class="card" data-choice="bars" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>A — Bar waveform</h3>
+      <div style="margin-top:10px;padding:12px;background:#1a1a2e;border-radius:8px;">
+        <div style="display:flex;align-items:flex-end;height:48px;gap:2px;justify-content:center;">
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:12px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:20px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:35px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:28px;"></div>
+          <div style="width:4px;background:#7c73ff;border-radius:1px;height:42px;"></div>
+          <div style="width:4px;background:#7c73ff;border-radius:1px;height:38px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:25px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:15px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:8px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:4px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:2px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:3px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:10px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:22px;"></div>
+          <div style="width:4px;background:#7c73ff;border-radius:1px;height:36px;"></div>
+          <div style="width:4px;background:#7c73ff;border-radius:1px;height:44px;"></div>
+          <div style="width:4px;background:#7c73ff;border-radius:1px;height:40px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:30px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:18px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:6px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:2px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:1px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:8px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:16px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:28px;"></div>
+          <div style="width:4px;background:#7c73ff;border-radius:1px;height:38px;"></div>
+          <div style="width:4px;background:#7c73ff;border-radius:1px;height:45px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:32px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:22px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:12px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:4px;"></div>
+          <div style="width:4px;background:#6c63ff;border-radius:1px;height:2px;"></div>
+        </div>
+      </div>
+      <p style="margin-top:8px;font-size:13px;color:#888;">Classic audio editor look. Clear silence vs. activity.</p>
+    </div>
+  </div>
+  <div class="card" data-choice="line" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>B — Line / filled waveform</h3>
+      <div style="margin-top:10px;padding:12px;background:#1a1a2e;border-radius:8px;">
+        <svg viewBox="0 0 200 48" style="width:100%;height:48px;">
+          <path d="M0,24 Q5,22 10,18 Q15,10 20,8 Q25,4 30,6 Q35,2 40,4 Q45,8 50,14 Q55,20 60,22 Q65,24 70,24 Q75,24 80,22 Q85,18 90,12 Q95,6 100,4 Q105,2 110,6 Q115,10 120,18 Q125,22 130,24 Q135,24 140,22 Q145,18 150,12 Q155,8 160,6 Q165,4 170,8 Q175,14 180,18 Q185,22 190,24 Q195,24 200,24" fill="none" stroke="#6c63ff" stroke-width="2"/>
+          <path d="M0,24 Q5,22 10,18 Q15,10 20,8 Q25,4 30,6 Q35,2 40,4 Q45,8 50,14 Q55,20 60,22 Q65,24 70,24 Q75,24 80,22 Q85,18 90,12 Q95,6 100,4 Q105,2 110,6 Q115,10 120,18 Q125,22 130,24 Q135,24 140,22 Q145,18 150,12 Q155,8 160,6 Q165,4 170,8 Q175,14 180,18 Q185,22 190,24 Q195,24 200,24 L200,48 L0,48 Z" fill="#6c63ff" opacity="0.15"/>
+        </svg>
+      </div>
+      <p style="margin-top:8px;font-size:13px;color:#888;">Smoother look. Less precise for silence spotting.</p>
+    </div>
+  </div>
+  <div class="card" data-choice="minimal" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>C — Minimal bars</h3>
+      <div style="margin-top:10px;padding:12px;background:#1a1a2e;border-radius:8px;">
+        <div style="display:flex;align-items:center;height:32px;gap:3px;justify-content:center;">
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:6px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:12px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:24px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:20px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:28px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:16px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:8px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:3px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:1px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:2px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:8px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:18px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:26px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:30px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:22px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:14px;"></div>
+          <div style="width:3px;background:#6c63ff;border-radius:2px;height:6px;"></div>
+        </div>
+      </div>
+      <p style="margin-top:8px;font-size:13px;color:#888;">Low profile, compact, just enough info.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="subtitle">Check it out at http://localhost:64235 and let me know which style you prefer — or if you want something different entirely.</p>
+</div>

@@ -1,0 +1,6 @@
+id=squeeze_bridge_v2
+name=Squeeze Bridge v2
+version=v1.0
+versionCode=1
+author=Lifelogger
+description=Bridges Elmyra Active Edge squeeze detection to Lifelogger app via custom broadcast intent.

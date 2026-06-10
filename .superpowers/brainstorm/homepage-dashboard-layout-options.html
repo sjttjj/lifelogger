@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lifelogger Home Layout Options</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101113;
+      --panel: #191b1f;
+      --panel-2: #20242a;
+      --line: #343a43;
+      --text: #f2f4f7;
+      --muted: #9aa3ad;
+      --accent: #76d0b5;
+      --accent-2: #f0b86a;
+      --danger: #e46d6d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 28px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
+    .subtitle { margin: 0 0 24px; color: var(--muted); max-width: 900px; line-height: 1.45; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 22px;
+      align-items: start;
+    }
+    .option {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #15171a;
+      padding: 16px;
+    }
+    .option h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    .option p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .phone {
+      width: min(100%, 330px);
+      min-height: 650px;
+      margin: 0 auto;
+      border: 1px solid #3a4049;
+      border-radius: 28px;
+      background: #0f1012;
+      padding: 18px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 750;
+    }
+    .tiny-icon {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      background: var(--panel);
+    }
+    .dashboard {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .dash-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .dash-main {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+    .dash-sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .record-strip {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #16191d;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .record-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .record-dot.live { background: var(--danger); }
+    .record-text { flex: 1; min-width: 0; }
+    .record-text strong { display: block; font-size: 14px; }
+    .record-text span { color: var(--muted); font-size: 12px; }
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 6px 9px;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .action {
+      min-height: 78px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      text-align: center;
+      padding: 8px;
+    }
+    .action.primary {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+      background: #17221f;
+    }
+    .symbol { font-size: 22px; line-height: 1; }
+    .label { font-size: 11px; color: #dfe5ea; }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #16191d;
+      padding: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .stat strong { display: block; color: var(--text); font-size: 16px; margin-top: 4px; }
+    .dense-list {
+      display: grid;
+      gap: 9px;
+      margin-top: 12px;
+    }
+    .list-item {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .mini-square {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: var(--panel-2);
+      display: grid;
+      place-items: center;
+    }
+    .list-title { font-size: 13px; font-weight: 650; }
+    .list-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .small-button {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px 9px;
+      font-size: 11px;
+      color: var(--text);
+      background: #171a1f;
+    }
+  </style>
+</head>
+<body>
+  <h1>Lifelogger Home Screen Direction</h1>
+  <p class="subtitle">Three compact homepage concepts. All remove the large "Not recording" state, move manual sync to Settings, add square icon actions, and reserve a top dashboard area for reminders now and other modules later.</p>
+
+  <div class="grid">
+    <section class="option">
+      <h2>A. Dashboard First</h2>
+      <div class="phone">
+        <div class="status"><span>09:42</span><span>88%</span></div>
+        <div class="title-row"><div class="title">Lifelogger</div><div class="tiny-icon">⚙</div></div>
+        <div class="dashboard">
+          <div class="dash-label"><span>Next reminder</span><span>Today</span></div>
+          <div class="dash-main">Call Kate about the invoice</div>
+          <div class="dash-sub">Due 4:30 PM · Tap to review or edit reminder details.</div>
+        </div>
+        <div class="record-strip">
+          <div class="record-dot"></div>
+          <div class="record-text"><strong>Ready</strong><span>Normal recording · squeeze for reminder</span></div>
+          <span class="pill">00:00</span>
+        </div>
+        <div class="actions">
+          <div class="action primary"><div class="symbol">●</div><div class="label">Record</div></div>
+          <div class="action"><div class="symbol">▤</div><div class="label">Logs</div></div>
+          <div class="action"><div class="symbol">◷</div><div class="label">Reminders</div></div>
+          <div class="action"><div class="symbol">♪</div><div class="label">Recordings</div></div>
+          <div class="action"><div class="symbol">✎</div><div class="label">Prompts</div></div>
+          <div class="action"><div class="symbol">⚙</div><div class="label">Settings</div></div>
+        </div>
+        <div class="stats">
+          <div class="stat">Sync<strong>Online</strong></div>
+          <div class="stat">Next chunk<strong>18:22</strong></div>
+        </div>
+      </div>
+      <p>Recommended: clean hierarchy, strong dashboard slot, compact controls, still obvious how to record.</p>
+    </section>
+
+    <section class="option">
+      <h2>B. Control Pad</h2>
+      <div class="phone">
+        <div class="status"><span>09:42</span><span>88%</span></div>
+        <div class="title-row"><div class="title">Home</div><div class="tiny-icon">⚙</div></div>
+        <div class="record-strip">
+          <div class="record-dot live"></div>
+          <div class="record-text"><strong>Recording session</strong><span>12:08 elapsed · next chunk 18:22</span></div>
+          <span class="pill">Stop</span>
+        </div>
+        <div class="actions">
+          <div class="action primary"><div class="symbol">■</div><div class="label">Stop</div></div>
+          <div class="action"><div class="symbol">◷</div><div class="label">Reminder</div></div>
+          <div class="action"><div class="symbol">▤</div><div class="label">Logs</div></div>
+          <div class="action"><div class="symbol">♪</div><div class="label">Recordings</div></div>
+          <div class="action"><div class="symbol">✎</div><div class="label">Prompts</div></div>
+          <div class="action"><div class="symbol">⚙</div><div class="label">Settings</div></div>
+        </div>
+        <div class="dashboard" style="margin-top:16px;">
+          <div class="dash-label"><span>Dashboard</span><span>2 cards</span></div>
+          <div class="dash-main">Reminder at 4:30 PM</div>
+          <div class="dash-sub">Plus sync/battery state below the main controls.</div>
+        </div>
+        <div class="stats">
+          <div class="stat">Battery<strong>88%</strong></div>
+          <div class="stat">Sync<strong>Online</strong></div>
+        </div>
+      </div>
+      <p>Best if recording controls should dominate. The dashboard becomes secondary, so future modules get less first-screen weight.</p>
+    </section>
+
+    <section class="option">
+      <h2>C. Feed Dashboard</h2>
+      <div class="phone">
+        <div class="status"><span>09:42</span><span>88%</span></div>
+        <div class="title-row"><div class="title">Today</div><div class="tiny-icon">⚙</div></div>
+        <div class="dashboard">
+          <div class="dash-label"><span>Priority</span><span>Now</span></div>
+          <div class="dash-main">No active recording</div>
+          <div class="dash-sub">Next reminder: Call Kate at 4:30 PM.</div>
+        </div>
+        <div class="actions">
+          <div class="action primary"><div class="symbol">●</div><div class="label">Record</div></div>
+          <div class="action"><div class="symbol">◷</div><div class="label">Reminders</div></div>
+          <div class="action"><div class="symbol">▤</div><div class="label">Life Log</div></div>
+        </div>
+        <div class="dense-list">
+          <div class="list-item"><div class="mini-square">◷</div><div><div class="list-title">Call Kate</div><div class="list-sub">Today · 4:30 PM</div></div><button class="small-button">Open</button></div>
+          <div class="list-item"><div class="mini-square">▤</div><div><div class="list-title">Latest notes</div><div class="list-sub">3 sessions synced</div></div><button class="small-button">View</button></div>
+          <div class="list-item"><div class="mini-square">?</div><div><div class="list-title">Ask AI</div><div class="list-sub">Future placeholder</div></div><button class="small-button">Soon</button></div>
+        </div>
+      </div>
+      <p>Most future-facing. It starts to feel like a dashboard product, but it adds more surface area before those modules exist.</p>
+    </section>
+  </div>
+</body>
+</html>

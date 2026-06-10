@@ -1,0 +1,15 @@
+#!/sbin/sh
+# Standard Magisk module update-binary
+# This file is provided by the Magisk module template
+
+OUTFD=$2
+ZIPFILE=$3
+
+mount /data 2>/dev/null
+[ -f /data/adb/magisk/util_functions.sh ] && . /data/adb/magisk/util_functions.sh
+[ -f /data/adb/magisk/util_functions.sh ] || recovery_actions
+
+ui_print "- Installing Squeeze Bridge v2"
+
+# Magisk handles the rest via updater-script
+ui_print "- Done"

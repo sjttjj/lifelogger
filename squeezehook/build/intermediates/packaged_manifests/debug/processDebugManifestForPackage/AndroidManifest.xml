@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.sam.lifelogger.squeezehooks" >
+
+    <uses-sdk
+        android:minSdkVersion="35"
+        android:targetSdkVersion="36" />
+
+    <application
+        android:debuggable="true"
+        android:extractNativeLibs="false"
+        android:hasCode="true"
+        android:label="Squeeze Bridge" >
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="93" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="Hooks Elmyra squeeze gestures to relay them to Lifelogger" />
+    </application>
+
+</manifest>

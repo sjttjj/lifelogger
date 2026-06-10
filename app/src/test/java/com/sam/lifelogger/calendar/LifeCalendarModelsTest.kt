@@ -1,0 +1,67 @@
+package com.sam.lifelogger.calendar
+
+import com.sam.lifelogger.data.Reminder
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import java.time.LocalDate
+
+class LifeCalendarModelsTest {
+
+    @Test
+    fun mapsSingleDayReminderToOneCalendarDate() {
+        val reminder = reminder(
+            scheduledAtLocal = "2026-06-10T09:00:00+10:00",
+            endAtLocal = null
+        )
+
+        val item = LifeCalendarItem.fromReminder(reminder)
+
+        assertEquals(listOf(LocalDate.of(2026, 6, 10)), item.coveredDates())
+    }
+
+    @Test
+    fun mapsMultiDayReminderAcrossInclusiveDateRange() {
+        val reminder = reminder(
+            scheduledAtLocal = "2026-06-10T09:00:00+10:00",
+            endAtLocal = "2026-06-12T17:00:00+10:00"
+        )
+
+        val item = LifeCalendarItem.fromReminder(reminder)
+
+        assertEquals(
+            listOf(
+                LocalDate.of(2026, 6, 10),
+                LocalDate.of(2026, 6, 11),
+                LocalDate.of(2026, 6, 12)
+            ),
+            item.coveredDates()
+        )
+    }
+
+    private fun reminder(
+        scheduledAtLocal: String?,
+        endAtLocal: String?
+    ): Reminder {
+        return Reminder(
+            id = 7,
+            sourceSegmentId = null,
+            kind = "event",
+            title = "Calendar item",
+            description = null,
+            status = "pending",
+            needsReview = false,
+            timezone = "Australia/Sydney",
+            scheduledAtLocal = scheduledAtLocal,
+            scheduledAtUtc = "2026-06-09T23:00:00Z",
+            endAtLocal = endAtLocal,
+            endAtUtc = if (endAtLocal == null) null else "2026-06-12T07:00:00Z",
+            schedulePrecision = "datetime",
+            usedDefaultTime = false,
+            location = null,
+            people = null,
+            amount = null,
+            recurrenceText = null,
+            notificationJobs = emptyList()
+        )
+    }
+}

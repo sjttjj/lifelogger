@@ -1,0 +1,74 @@
+<h2>Waveform + Progress Bar Overlap</h2>
+<p class="subtitle">The waveform sits behind the progress bar as a subtle visual guide. The scrub handle and time are on top.</p>
+
+<div class="mockup" style="max-width:420px;margin:0 auto;">
+  <div class="mockup-body" style="padding:16px;background:#1a1a2e;border-radius:12px;font-family:sans-serif;">
+    <!-- filename row -->
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px;color:#ccc;">
+      <span style="font-weight:600;font-size:14px;">chunk_1423.m4a</span>
+      <span style="font-size:12px;color:#888;">1.2 MB</span>
+    </div>
+
+    <!-- play button + combined waveform/progress -->
+    <div style="display:flex;align-items:center;gap:12px;">
+      <!-- Play/Pause button -->
+      <div style="width:40px;height:40px;border-radius:50%;background:#6c63ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <span style="color:white;font-size:16px;">▶</span>
+      </div>
+
+      <!-- Combined waveform + progress bar -->
+      <div style="flex:1;position:relative;height:48px;">
+        <!-- waveform bars (background) -->
+        <div style="position:absolute;bottom:12px;left:0;right:0;display:flex;align-items:flex-end;gap:2px;height:32px;">
+          <div style="flex:1;background:rgba(108,99,255,0.3);border-radius:1px;height:4px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.3);border-radius:1px;height:8px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.4);border-radius:1px;height:16px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.4);border-radius:1px;height:12px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.5);border-radius:1px;height:24px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.5);border-radius:1px;height:28px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.4);border-radius:1px;height:20px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.3);border-radius:1px;height:10px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.2);border-radius:1px;height:4px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.15);border-radius:1px;height:2px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.15);border-radius:1px;height:1px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.2);border-radius:1px;height:3px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.3);border-radius:1px;height:6px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.4);border-radius:1px;height:18px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.5);border-radius:1px;height:26px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.5);border-radius:1px;height:30px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.4);border-radius:1px;height:22px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.3);border-radius:1px;height:14px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.2);border-radius:1px;height:6px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.15);border-radius:1px;height:2px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.15);border-radius:1px;height:1px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.15);border-radius:1px;height:2px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.2);border-radius:1px;height:5px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.3);border-radius:1px;height:10px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.4);border-radius:1px;height:20px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.5);border-radius:1px;height:28px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.5);border-radius:1px;height:22px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.4);border-radius:1px;height:14px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.3);border-radius:1px;height:8px;"></div>
+          <div style="flex:1;background:rgba(108,99,255,0.2);border-radius:1px;height:3px;"></div>
+        </div>
+
+        <!-- Progress bar track + scrub handle (foreground) -->
+        <div style="position:absolute;bottom:10px;left:0;right:0;height:32px;display:flex;align-items:center;">
+          <div style="flex:1;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;position:relative;">
+            <div style="width:42%;height:100%;background:#6c63ff;border-radius:2px;"></div>
+            <div style="position:absolute;left:42%;top:-6px;width:16px;height:16px;border-radius:50%;background:white;border:2px solid #6c63ff;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- time display -->
+    <div style="display:flex;justify-content:flex-end;margin-top:6px;font-size:11px;color:#888;">
+      01:23 / 04:15
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="subtitle">The waveform bars are semi-transparent behind the progress slider. The scrub handle sits on top of both. Does this match what you had in mind?</p>
+</div>

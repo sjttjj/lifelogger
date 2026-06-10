@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendar Agenda + Compact Month Map V2</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --ink: #202421;
+      --muted: #69706b;
+      --line: #d8ddd7;
+      --card: #ffffff;
+      --accent: #2d6a62;
+      --c1: #5b8def;
+      --c2: #2e9d74;
+      --c3: #e0a32f;
+      --c4: #d75d7a;
+      --c5: #7b61d1;
+      --c6: #d66f32;
+      --c7: #2f9eaa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .subtitle { margin: 0 0 22px; color: var(--muted); max-width: 900px; line-height: 1.45; }
+    .layout { display: grid; grid-template-columns: 330px minmax(280px, 1fr); gap: 22px; align-items: start; }
+    .phone {
+      width: 330px;
+      height: 700px;
+      border: 9px solid #1d211f;
+      border-radius: 32px;
+      overflow: hidden;
+      background: #fbfcfa;
+      box-shadow: 0 18px 40px rgba(31, 36, 33, 0.18);
+      position: relative;
+    }
+    .screen { height: 100%; padding: 14px; overflow: hidden; position: relative; }
+    .top, .range-row, .map-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .top { margin-bottom: 10px; }
+    .title { font-size: 19px; font-weight: 760; }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      overflow: hidden;
+      font-size: 12px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .tabs span { padding: 8px 4px; color: var(--muted); }
+    .tabs .active { background: var(--accent); color: white; font-weight: 700; }
+    .range-row { margin-bottom: 8px; gap: 8px; }
+    .month-nav { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .nav-btn {
+      width: 27px;
+      height: 27px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: white;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+    }
+    .range-title { font-weight: 760; white-space: nowrap; }
+    .segmented { display: flex; gap: 4px; background: #ecf0ec; padding: 3px; border-radius: 9px; font-size: 10px; }
+    .segmented span { padding: 4px 7px; color: var(--muted); border-radius: 7px; }
+    .segmented .active { background: white; color: var(--ink); font-weight: 700; }
+    .agenda {
+      height: 522px;
+      overflow: hidden;
+      padding-bottom: 124px;
+      display: grid;
+      gap: 8px;
+    }
+    .day-block { display: grid; grid-template-columns: 44px 1fr; gap: 9px; align-items: start; }
+    .date-badge {
+      text-align: center;
+      border-radius: 10px;
+      padding: 7px 4px;
+      background: #eef1ed;
+      font-size: 11px;
+      font-weight: 760;
+    }
+    .stack { border-left: 2px solid var(--accent); padding-left: 9px; display: grid; gap: 7px; }
+    .event-card {
+      --event: var(--c1);
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 8px 8px 13px;
+      font-size: 12px;
+      line-height: 1.25;
+      position: relative;
+    }
+    .event-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 7px;
+      bottom: 7px;
+      width: 5px;
+      border-radius: 0 5px 5px 0;
+      background: var(--event);
+    }
+    .event-card strong { display: block; }
+    .event-card small { display: block; color: var(--muted); margin-top: 3px; }
+    .map-panel {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 7px 14px 10px;
+      background: rgba(251, 252, 250, 0.96);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -10px 22px rgba(31, 36, 33, 0.10);
+    }
+    .map-head { margin-bottom: 4px; font-size: 10px; color: var(--muted); }
+    .map-head strong { color: var(--ink); font-size: 12px; }
+    .weekdays, .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .weekdays span { font-size: 8px; color: var(--muted); text-align: center; }
+    .cell {
+      aspect-ratio: 1.28;
+      border-radius: 5px;
+      background: #edf0ec;
+      border: 1px solid #dce1da;
+      font-size: 8px;
+      color: rgba(32, 36, 33, 0.72);
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+      font-weight: 760;
+    }
+    .cell.active { color: white; border-color: transparent; }
+    .cell.one { background: var(--c1); }
+    .cell.two { background: linear-gradient(90deg, var(--c2) 0 50%, var(--c3) 50% 100%); }
+    .cell.three { background: linear-gradient(90deg, var(--c5) 0 33.33%, var(--c6) 33.33% 66.66%, var(--c7) 66.66% 100%); }
+    .cell.four { background: linear-gradient(90deg, var(--c1) 0 25%, var(--c2) 25% 50%, var(--c4) 50% 75%, var(--c6) 75% 100%); }
+    .cell.c1 { background: var(--c1); }
+    .cell.c2 { background: var(--c2); }
+    .cell.c3 { background: var(--c3); }
+    .cell.c4 { background: var(--c4); }
+    .cell.dim { opacity: .35; }
+    .notes {
+      display: grid;
+      gap: 12px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      max-width: 650px;
+    }
+    .notes h2 { margin: 0; font-size: 18px; }
+    .notes p, .notes li { color: var(--muted); line-height: 1.45; }
+    .notes p { margin: 0; }
+    .notes ul { margin: 0; padding-left: 18px; }
+    .palette { display: flex; flex-wrap: wrap; gap: 7px; }
+    .swatch { width: 22px; height: 22px; border-radius: 7px; background: var(--c); border: 1px solid rgba(0,0,0,.08); }
+    @media (max-width: 760px) {
+      body { padding: 16px; }
+      .layout { grid-template-columns: 1fr; }
+      .phone { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Compact Agenda Calendar V2</h1>
+  <p class="subtitle">This version adds month navigation, gives every reminder its own colour, divides same-day cells into equal colour slices, and makes the bottom map more compact.</p>
+
+  <div class="layout">
+    <div class="phone">
+      <div class="screen">
+        <div class="top"><div class="title">Life Calendar</div><div>↻</div></div>
+        <div class="tabs"><span class="active">Calendar</span><span>Filters</span><span>Later</span></div>
+        <div class="range-row">
+          <div class="month-nav">
+            <div class="nav-btn">‹</div>
+            <div class="range-title">June 2026</div>
+            <div class="nav-btn">›</div>
+          </div>
+          <div class="segmented"><span>Week</span><span class="active">Month</span><span>All</span></div>
+        </div>
+
+        <div class="agenda">
+          <div class="day-block">
+            <div class="date-badge">8<br>Mon</div>
+            <div class="stack">
+              <div class="event-card" style="--event: var(--c2)"><strong>Dentist appointment</strong><small>17:00 · Clinic</small></div>
+            </div>
+          </div>
+          <div class="day-block">
+            <div class="date-badge">9<br>Tue</div>
+            <div class="stack">
+              <div class="event-card" style="--event: var(--c3)"><strong>Submit BAS paperwork</strong><small>09:00</small></div>
+              <div class="event-card" style="--event: var(--c5)"><strong>Check blood test results</strong><small>18:00</small></div>
+            </div>
+          </div>
+          <div class="day-block">
+            <div class="date-badge">12<br>Fri</div>
+            <div class="stack">
+              <div class="event-card" style="--event: var(--c6)"><strong>Call accountant about tax</strong><small>15:30</small></div>
+            </div>
+          </div>
+          <div class="day-block">
+            <div class="date-badge">18<br>Thu</div>
+            <div class="stack">
+              <div class="event-card" style="--event: var(--c1)"><strong>Conference travel</strong><small>18-24 Jun · multi-day</small></div>
+              <div class="event-card" style="--event: var(--c4)"><strong>Dinner with Juz</strong><small>19:00</small></div>
+              <div class="event-card" style="--event: var(--c2)"><strong>Pack medication</strong><small>20:30</small></div>
+              <div class="event-card" style="--event: var(--c6)"><strong>Pay hotel deposit</strong><small>21:00</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="map-panel">
+          <div class="map-head"><strong>Month map</strong><span>Tap a day colour to jump</span></div>
+          <div class="weekdays"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+          <div class="month-grid">
+            <div class="cell dim">31</div><div class="cell">1</div><div class="cell">2</div><div class="cell">3</div><div class="cell">4</div><div class="cell">5</div><div class="cell">6</div>
+            <div class="cell">7</div><div class="cell active c2">8</div><div class="cell active two">9</div><div class="cell">10</div><div class="cell">11</div><div class="cell active c6">12</div><div class="cell">13</div>
+            <div class="cell">14</div><div class="cell">15</div><div class="cell">16</div><div class="cell">17</div><div class="cell active four">18</div><div class="cell active c1">19</div><div class="cell active c1">20</div>
+            <div class="cell active c1">21</div><div class="cell active c1">22</div><div class="cell active c1">23</div><div class="cell active c1">24</div><div class="cell active c3">25</div><div class="cell">26</div><div class="cell">27</div>
+            <div class="cell">28</div><div class="cell">29</div><div class="cell">30</div><div class="cell dim">1</div><div class="cell dim">2</div><div class="cell dim">3</div><div class="cell dim">4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h2>Proposed Behavior</h2>
+      <ul>
+        <li>Left/right arrows move the displayed range to the previous or next month when `Month` is selected.</li>
+        <li>Each reminder gets a deterministic colour from a broad palette, based on reminder id, so category is not required.</li>
+        <li>If a day has 2, 3, or 4 items, the map square is divided into 2, 3, or 4 equal vertical colour slices.</li>
+        <li>If a day has more than 4 items, we can show the first 4 colours plus a tiny `+N` indicator in the cell.</li>
+        <li>Multi-day reminders colour every covered day using that reminder’s colour.</li>
+        <li>The bottom map is shorter than v1, leaving more readable list space.</li>
+      </ul>
+      <div class="palette">
+        <span class="swatch" style="--c: var(--c1)"></span>
+        <span class="swatch" style="--c: var(--c2)"></span>
+        <span class="swatch" style="--c: var(--c3)"></span>
+        <span class="swatch" style="--c: var(--c4)"></span>
+        <span class="swatch" style="--c: var(--c5)"></span>
+        <span class="swatch" style="--c: var(--c6)"></span>
+        <span class="swatch" style="--c: var(--c7)"></span>
+      </div>
+      <p><strong>Implementation note:</strong> this can replace the current separate Month/Week/List views with one agenda-map screen and a range selector.</p>
+    </div>
+  </div>
+</body>
+</html>

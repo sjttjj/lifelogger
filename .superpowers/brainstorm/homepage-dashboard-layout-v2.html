@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lifelogger Dashboard Carousel Direction</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101113;
+      --panel: #191b1f;
+      --panel-2: #22262c;
+      --line: #343a43;
+      --text: #f2f4f7;
+      --muted: #9aa3ad;
+      --accent: #76d0b5;
+      --accent-2: #f0b86a;
+      --danger: #e46d6d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 28px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
+    .subtitle { margin: 0 0 24px; color: var(--muted); max-width: 920px; line-height: 1.45; }
+    .wrap {
+      display: grid;
+      grid-template-columns: minmax(300px, 380px) minmax(320px, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    @media (max-width: 860px) {
+      .wrap { grid-template-columns: 1fr; }
+    }
+    .phone {
+      width: min(100%, 360px);
+      min-height: 720px;
+      margin: 0 auto;
+      border: 1px solid #3a4049;
+      border-radius: 28px;
+      background: #0f1012;
+      padding: 18px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 750;
+    }
+    .tiny-icon {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      background: var(--panel);
+    }
+    .dashboard-shell {
+      margin-bottom: 16px;
+    }
+    .section-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .carousel {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scroll-snap-type: x mandatory;
+    }
+    .module-card {
+      flex: 0 0 294px;
+      min-height: 190px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 14px;
+      scroll-snap-align: start;
+    }
+    .module-card.placeholder {
+      background: #17191d;
+      border-style: dashed;
+    }
+    .module-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .module-title {
+      font-size: 18px;
+      font-weight: 750;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 8px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .mini-list {
+      display: grid;
+      gap: 8px;
+    }
+    .mini-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid #2d333b;
+      border-radius: 9px;
+      background: #15181c;
+      padding: 10px;
+    }
+    .mini-title { font-size: 13px; font-weight: 650; }
+    .mini-sub { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .time {
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .placeholder-copy {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 14px;
+    }
+    .dots {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #424953;
+    }
+    .dot.active { background: var(--accent); }
+    .record-strip {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #16191d;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .record-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .record-dot.live { background: var(--danger); }
+    .record-text { flex: 1; min-width: 0; }
+    .record-text strong { display: block; font-size: 14px; }
+    .record-text span { color: var(--muted); font-size: 12px; }
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 6px 9px;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .action {
+      min-height: 78px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      text-align: center;
+      padding: 8px;
+    }
+    .action.primary {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+      background: #17221f;
+    }
+    .symbol { font-size: 22px; line-height: 1; }
+    .label { font-size: 11px; color: #dfe5ea; }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #16191d;
+      padding: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .stat strong { display: block; color: var(--text); font-size: 16px; margin-top: 4px; }
+    .notes {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #15171a;
+      padding: 18px;
+    }
+    .notes h2 { margin: 0 0 12px; font-size: 18px; }
+    .notes h3 { margin: 18px 0 8px; font-size: 14px; color: var(--accent); }
+    .notes p, .notes li { color: var(--muted); line-height: 1.5; font-size: 14px; }
+    .notes ul { padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Dashboard-first homepage, with working modules and placeholders</h1>
+  <p class="subtitle">This combines option A's clean homepage with a horizontal dashboard carousel. The reminders module is real and data-backed; Finance and Ask AI are visible placeholders so the app has an obvious roadmap without fake functionality.</p>
+
+  <div class="wrap">
+    <div class="phone">
+      <div class="status"><span>09:42</span><span>88%</span></div>
+      <div class="title-row"><div class="title">Lifelogger</div><div class="tiny-icon">⚙</div></div>
+
+      <section class="dashboard-shell">
+        <div class="section-label"><span>Dashboard</span><span>Swipe for modules</span></div>
+        <div class="carousel">
+          <article class="module-card">
+            <div class="module-head">
+              <div class="module-title">Reminders</div>
+              <div class="chip">2 pressing</div>
+            </div>
+            <div class="mini-list">
+              <div class="mini-card">
+                <div><div class="mini-title">Call Kate about invoice</div><div class="mini-sub">Today · needs follow-up</div></div>
+                <div class="time">4:30</div>
+              </div>
+              <div class="mini-card">
+                <div><div class="mini-title">Pick up medication</div><div class="mini-sub">Tomorrow · pharmacy</div></div>
+                <div class="time">9:00</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="module-card placeholder">
+            <div class="module-head">
+              <div class="module-title">Finance</div>
+              <div class="chip">Soon</div>
+            </div>
+            <div class="mini-list">
+              <div class="mini-card"><div><div class="mini-title">Cashflow snapshot</div><div class="mini-sub">Future account or spreadsheet integration</div></div></div>
+              <div class="mini-card"><div><div class="mini-title">Bills and alerts</div><div class="mini-sub">Future reminders linked to money events</div></div></div>
+            </div>
+          </article>
+
+          <article class="module-card placeholder">
+            <div class="module-head">
+              <div class="module-title">Ask AI</div>
+              <div class="chip">Soon</div>
+            </div>
+            <p class="placeholder-copy">A future entry point for asking questions across transcripts, reminders, and notes. For now it can open a disabled state or simply be non-clickable.</p>
+          </article>
+        </div>
+        <div class="dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span></div>
+      </section>
+
+      <div class="record-strip">
+        <div class="record-dot"></div>
+        <div class="record-text"><strong>Ready</strong><span>Normal recording · squeeze for reminder</span></div>
+        <span class="pill">00:00</span>
+      </div>
+
+      <div class="actions">
+        <div class="action primary"><div class="symbol">●</div><div class="label">Record</div></div>
+        <div class="action"><div class="symbol">▤</div><div class="label">Life Log</div></div>
+        <div class="action"><div class="symbol">◷</div><div class="label">Reminders</div></div>
+        <div class="action"><div class="symbol">♪</div><div class="label">Recordings</div></div>
+        <div class="action"><div class="symbol">✎</div><div class="label">Prompts</div></div>
+        <div class="action"><div class="symbol">⚙</div><div class="label">Settings</div></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">Sync<strong>Online</strong></div>
+        <div class="stat">Next chunk<strong>18:22</strong></div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h2>Recommended implementation shape</h2>
+      <h3>Approach 1: Lightweight carousel, real reminders, placeholder cards</h3>
+      <p>This is the recommended first pass. It uses a horizontal row inside the dashboard area. The Reminders card reads cached upcoming reminders and shows the top two. Finance and Ask AI are styled placeholders, marked Soon.</p>
+
+      <h3>Approach 2: Full dashboard framework now</h3>
+      <p>Create a reusable module registry and per-module view models immediately. More scalable, but heavier than the app needs before Finance and AI exist.</p>
+
+      <h3>Approach 3: Reminder-only dashboard now</h3>
+      <p>Very simple and data-pure, but it loses the useful roadmap effect you asked for.</p>
+
+      <h3>Recommendation</h3>
+      <ul>
+        <li>Build Approach 1.</li>
+        <li>Keep Settings as the place for manual sync and server controls.</li>
+        <li>Use real reminder cache data; fall back to an empty reminder message if none exist.</li>
+        <li>Use placeholders for Finance and Ask AI without backend wiring.</li>
+        <li>Keep recording state compact: only show timer and stop affordance when recording.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
