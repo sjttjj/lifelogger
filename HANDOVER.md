@@ -628,4 +628,3 @@ After each task, rebuild and run:
 - `docs/superpowers/specs/2026-06-05-reminder-system-design.md`
 - `docs/superpowers/plans/2026-06-05-reminder-system-plan.md`
 - `docs/claude-next-prompt.md`
-
