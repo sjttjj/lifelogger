@@ -38,9 +38,24 @@ class LifeCalendarModelsTest {
         )
     }
 
+    @Test
+    fun mapsRecurringOccurrenceLocalWhenScheduledLocalIsMissing() {
+        val reminder = reminder(
+            scheduledAtLocal = null,
+            endAtLocal = null,
+            recurrenceOccurrenceLocal = "2026-06-17T09:00:00+10:00"
+        )
+
+        val item = LifeCalendarItem.fromReminder(reminder)
+
+        assertEquals("2026-06-17T09:00:00+10:00", item.startLocal)
+        assertEquals(listOf(LocalDate.of(2026, 6, 17)), item.coveredDates())
+    }
+
     private fun reminder(
         scheduledAtLocal: String?,
-        endAtLocal: String?
+        endAtLocal: String?,
+        recurrenceOccurrenceLocal: String? = null
     ): Reminder {
         return Reminder(
             id = 7,
@@ -61,6 +76,7 @@ class LifeCalendarModelsTest {
             people = null,
             amount = null,
             recurrenceText = null,
+            recurrenceOccurrenceLocal = recurrenceOccurrenceLocal,
             notificationJobs = emptyList()
         )
     }

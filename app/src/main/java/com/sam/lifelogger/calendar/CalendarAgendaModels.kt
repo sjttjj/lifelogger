@@ -1,6 +1,7 @@
-package com.sam.lifelogger.calendar
+﻿package com.sam.lifelogger.calendar
 
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.YearMonth
 import kotlin.math.abs
 
@@ -54,18 +55,27 @@ object CalendarItemColorPalette {
         colors[abs(sourceId.hashCode()) % colors.size]
 }
 
+/**
+ * One coloured dot rendered inside a month-map day cell.
+ * [muted] indicates the source item is done/cancelled/archived and should be
+ * rendered greyed-out rather than in its full palette colour.
+ */
+data class MonthMapDot(val color: CalendarItemColor, val muted: Boolean)
+
 data class MonthMapCell(
     val date: LocalDate,
     val inSelectedMonth: Boolean,
     val items: List<LifeCalendarItem>,
-    val visibleColors: List<CalendarItemColor>,
-    val overflowCount: Int
+    val visibleDots: List<MonthMapDot>,
+    val overflowCount: Int,
+    val isPast: Boolean
 )
 
 fun buildMonthMapCells(
     month: YearMonth,
     items: List<LifeCalendarItem>
 ): List<MonthMapCell> {
+    val today = LocalDate.now()
     val first = month.atDay(1)
     val leadingDays = first.dayOfWeek.value % 7
     val start = first.minusDays(leadingDays.toLong())
@@ -79,8 +89,29 @@ fun buildMonthMapCells(
             date = date,
             inSelectedMonth = YearMonth.from(date) == month,
             items = dayItems,
-            visibleColors = dayItems.take(4).map { CalendarItemColorPalette.colorFor(it.sourceId) },
-            overflowCount = (dayItems.size - 4).coerceAtLeast(0)
+            visibleDots = dayItems.take(4).map { item ->
+                val muted = item.status.equals("done", ignoreCase = true) ||
+                    item.status.equals("cancelled", ignoreCase = true) ||
+                    item.status.equals("archived", ignoreCase = true)
+                MonthMapDot(CalendarItemColorPalette.colorFor(item.sourceId), muted)
+            },
+            overflowCount = (dayItems.size - 4).coerceAtLeast(0),
+            isPast = date.isBefore(today)
         )
     }
+}
+
+object CalendarReminderFilters {
+    fun weekMonthItems(items: List<LifeCalendarItem>, today: LocalDate): List<LifeCalendarItem> =
+        items
+            .filter { it.status.equals("pending", ignoreCase = true) }
+            .filter { item ->
+                val date = item.startLocal?.let {
+                    runCatching { OffsetDateTime.parse(it).toLocalDate() }.getOrNull()
+                } ?: return@filter false
+                !date.isBefore(today)
+            }
+
+    fun allItems(items: List<LifeCalendarItem>): List<LifeCalendarItem> =
+        items.filter { !it.status.equals("archived", ignoreCase = true) }
 }

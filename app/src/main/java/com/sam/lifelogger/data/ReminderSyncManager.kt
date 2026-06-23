@@ -1,4 +1,4 @@
-package com.sam.lifelogger.data
+﻿package com.sam.lifelogger.data
 
 import android.content.Context
 import android.util.Log
@@ -12,16 +12,37 @@ object ReminderSyncManager {
     private const val TAG = "ReminderSync"
 
     suspend fun syncUpcoming(context: Context): List<Reminder> = withContext(Dispatchers.IO) {
-        val start = Instant.now().minus(1, ChronoUnit.DAYS).toString()
+        val start = Instant.parse("2025-01-01T00:00:00Z").toString()
         val end = Instant.now().plus(30, ChronoUnit.DAYS).toString()
         val reminders = Reminder.listFromJson(ApiClient.getUpcomingReminders(context, start, end))
         val dao = AppDatabase.get(context).reminderDao()
-        dao.replaceUpcoming(reminders)
-        ReminderNotificationHelper.scheduleLocalNotifications(
-            context,
-            reminders.flatMap { it.notificationJobs }
-        )
+        dao.upsertUpcoming(reminders)
+        // Only schedule notifications for non-review reminders (or review items that the
+        // server has explicitly attached pending push jobs to). The planner already filters
+        // to pending push jobs, so needs_review items with no jobs schedule nothing.
+        val notifiableJobs = reminders
+            .filter { !it.needsReview || it.notificationJobs.any { job -> job.status == "pending" && job.channel == "push" } }
+            .flatMap { it.notificationJobs }
+        ReminderNotificationHelper.scheduleLocalNotifications(context, notifiableJobs)
         reminders
+    }
+
+    suspend fun syncAllReminders(context: Context): List<Reminder> = withContext(Dispatchers.IO) {
+        runCatching {
+            val reminders = Reminder.listFromJson(ApiClient.getAllReminders(context))
+            val dao = AppDatabase.get(context).reminderDao()
+            val selected = ReminderSyncPolicy.chooseAllReminders(
+                server = reminders,
+                cache = dao.getCachedReminders()
+            )
+            if (selected.isNotEmpty() && selected === reminders) {
+                dao.replaceAllSynced(selected)
+            }
+            selected
+        }.getOrElse { error ->
+            Log.w(TAG, "All-reminders sync failed; using reminder cache", error)
+            getCachedUpcoming(context)
+        }
     }
 
     suspend fun syncNeedsReview(context: Context): List<Reminder> = withContext(Dispatchers.IO) {
@@ -73,6 +94,92 @@ object ReminderSyncManager {
             )
         }
         syncUpcoming(context)
+    }
+
+    /**
+     * Mark a reminder done. Prefers the action endpoint; falls back to PATCH status=done
+     * if the action endpoint is unavailable (older server builds).
+     */
+    suspend fun markDone(context: Context, id: Long) = withContext(Dispatchers.IO) {
+        runCatching { ApiClient.markReminderDone(context, id) }
+            .recoverCatching { error ->
+                if (isActionEndpointMissing(error)) {
+                    ApiClient.patchReminder(context, id, ReminderPatch(status = "done"))
+                } else {
+                    throw error
+                }
+            }
+            .getOrThrow()
+        updateCachedStatus(context, id, status = "done")
+        syncUpcoming(context)
+    }
+
+    /**
+     * Cancel a reminder occurrence / reject a review item. Prefers the action endpoint;
+     * falls back to PATCH status=cancelled, needs_review=false on older servers.
+     */
+    suspend fun cancelReminder(context: Context, id: Long) = withContext(Dispatchers.IO) {
+        runCatching { ApiClient.cancelReminder(context, id) }
+            .recoverCatching { error ->
+                if (isActionEndpointMissing(error)) {
+                    ApiClient.patchReminder(
+                        context, id,
+                        ReminderPatch(status = "cancelled", needsReview = false)
+                    )
+                } else {
+                    throw error
+                }
+            }
+            .getOrThrow()
+        updateCachedStatus(context, id, status = "cancelled", needsReview = false)
+        syncUpcoming(context)
+    }
+
+    /** Archive a single reminder occurrence so it no longer shows in the app. */
+    suspend fun archiveReminder(context: Context, id: Long) = withContext(Dispatchers.IO) {
+        ApiClient.patchReminder(context, id, ReminderPatch(status = "archived"))
+        updateCachedStatus(context, id, status = "archived")
+        syncUpcoming(context)
+    }
+
+    /** Restore a done/cancelled/past reminder back to pending so it returns to month/week. */
+    suspend fun restoreReminder(context: Context, id: Long) = withContext(Dispatchers.IO) {
+        ApiClient.patchReminder(
+            context, id,
+            ReminderPatch(status = "pending", needsReview = false)
+        )
+        updateCachedStatus(context, id, status = "pending", needsReview = false)
+        syncUpcoming(context)
+    }
+
+    /** Stop future occurrences of a recurring series while preserving history. */
+    suspend fun stopRecurrenceSeries(context: Context, seriesId: Long) = withContext(Dispatchers.IO) {
+        ApiClient.stopRecurrenceSeries(context, seriesId)
+        syncUpcoming(context)
+    }
+
+    /** Archive an entire recurring series so it stops surfacing occurrences. */
+    suspend fun archiveRecurrenceSeries(context: Context, seriesId: Long) = withContext(Dispatchers.IO) {
+        ApiClient.archiveRecurrenceSeries(context, seriesId)
+        syncUpcoming(context)
+    }
+
+    private fun isActionEndpointMissing(error: Throwable): Boolean {
+        val message = error.message.orEmpty()
+        return message.contains("HTTP 404") || message.contains("HTTP 405")
+    }
+
+    private suspend fun updateCachedStatus(
+        context: Context,
+        id: Long,
+        status: String,
+        needsReview: Boolean? = null
+    ) {
+        val dao = AppDatabase.get(context).reminderDao()
+        val cached = dao.getCachedReminder(id) ?: return
+        dao.upsertReminders(
+            listOf(ReminderSyncPolicy.withLocalStatus(cached, status, needsReview).toCacheEntity())
+        )
     }
 
     suspend fun syncUpcomingOrUseCache(context: Context): List<Reminder> = withContext(Dispatchers.IO) {

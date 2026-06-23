@@ -174,6 +174,9 @@ object SqueezeActionMapper {
         reminderMode.cancel()
     }
 
+    fun startReminderModeTimerAfterPermissionGrant(): Boolean =
+        reminderMode.start()
+
     val allActions: List<String> get() = listOf(
         ACTION_TOGGLE_RECORDING,
         ACTION_TOGGLE_SESSION,

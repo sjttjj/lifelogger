@@ -98,6 +98,75 @@ class ReminderModelsTest {
     }
 
     @Test
+    fun infersRecurringFromRecurrenceObjectWhenServerOmitsBoolean() {
+        val json = JSONObject(
+            """
+            {
+              "reminders": [
+                {
+                  "id": 88,
+                  "kind": "task",
+                  "title": "Water plants",
+                  "status": "pending",
+                  "needs_review": false,
+                  "scheduled_at_local": "2026-06-10T09:00:00+10:00",
+                  "scheduled_at_utc": "2026-06-09T23:00:00Z",
+                  "schedule_precision": "datetime",
+                  "used_default_time": false,
+                  "recurrence_text": null,
+                  "recurrence_series_id": 12,
+                  "recurrence_occurrence_local": "2026-06-10T09:00:00+10:00",
+                  "recurrence": {
+                    "id": 12,
+                    "frequency": "weekly",
+                    "interval_count": 1,
+                    "day_of_week": 3,
+                    "time_local": "09:00"
+                  },
+                  "notification_jobs": []
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val reminder = Reminder.listFromJsonObject(json).single()
+
+        assertTrue(reminder.isRecurring)
+        assertEquals(12L, reminder.recurrenceSeriesId)
+        assertEquals("weekly", reminder.recurrence?.frequency)
+    }
+
+    @Test
+    fun infersRecurringFromLegacyRecurrenceTextWhenServerOmitsBoolean() {
+        val json = JSONObject(
+            """
+            {
+              "reminders": [
+                {
+                  "id": 89,
+                  "kind": "task",
+                  "title": "Bins",
+                  "status": "pending",
+                  "needs_review": false,
+                  "scheduled_at_local": "2026-06-10T09:00:00+10:00",
+                  "scheduled_at_utc": "2026-06-09T23:00:00Z",
+                  "schedule_precision": "date",
+                  "used_default_time": true,
+                  "recurrence_text": "Weekly on Wednesday",
+                  "notification_jobs": []
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val reminder = Reminder.listFromJsonObject(json).single()
+
+        assertTrue(reminder.isRecurring)
+    }
+
+    @Test
     fun serializesReminderPatchEndDates() {
         val patch = ReminderPatch(
             endAtLocal = "2026-06-12T17:00:00+10:00",

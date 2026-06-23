@@ -1,4 +1,4 @@
-package com.sam.lifelogger.ui
+﻿package com.sam.lifelogger.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +29,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -106,6 +107,8 @@ fun EditReminderScreen(
     }
     var kindExpanded by remember { mutableStateOf(false) }
     var statusExpanded by remember { mutableStateOf(false) }
+    var seriesAction by remember { mutableStateOf<String?>(null) }
+    var seriesBusy by remember { mutableStateOf(false) }
 
     LaunchedEffect(reminderId) {
         isLoading = true
@@ -120,7 +123,7 @@ fun EditReminderScreen(
             description = loaded.description.orEmpty()
             kind = loaded.kind
             status = loaded.status
-            loaded.scheduledAtLocal?.let {
+            (loaded.scheduledAtLocal ?: loaded.recurrenceOccurrenceLocal)?.let {
                 runCatching {
                     val parsed = OffsetDateTime.parse(it)
                     dateText = parsed.toLocalDate().toString()
@@ -361,6 +364,38 @@ fun EditReminderScreen(
                         options = listOf("pending", "done", "cancelled"),
                         onExpandedChange = { statusExpanded = it },
                         onSelected = { status = it; statusExpanded = false }
+                    )
+
+                    if (reminder?.isRecurring == true) {
+                        RepeatsSection(
+                            reminder = reminder,
+                            busy = seriesBusy,
+                            onAction = { seriesAction = it }
+                        )
+                    }
+                    SeriesActionDialog(
+                        action = seriesAction,
+                        reminder = reminder,
+                        onDismiss = { seriesAction = null },
+                        onConfirm = { action ->
+                            seriesBusy = true
+                            scope.launch {
+                                try {
+                                    val seriesId = reminder?.recurrenceSeriesId
+                                    when (action) {
+                                        "cancel_occurrence" -> ReminderSyncManager.cancelReminder(context, reminder!!.id)
+                                        "stop_series" -> seriesId?.let { ReminderSyncManager.stopRecurrenceSeries(context, it) }
+                                        "archive_series" -> seriesId?.let { ReminderSyncManager.archiveRecurrenceSeries(context, it) }
+                                    }
+                                    seriesAction = null
+                                    onSaved()
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("Action failed: ${e.message ?: "error"}")
+                                } finally {
+                                    seriesBusy = false
+                                }
+                            }
+                        }
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -673,3 +708,57 @@ private fun TimePickerField(
         }
     }
 }
+
+@Composable
+private fun RepeatsSection(reminder: Reminder?, busy: Boolean, onAction: (String) -> Unit) {
+    val recurrence = reminder?.recurrence
+    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = "Repeats" + (recurrence?.frequency?.let { " $it" } ?: ""),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            reminder?.recurrenceText?.takeIf { it.isNotBlank() }?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "This is one scheduled occurrence. These actions affect the whole series. Marking this done or cancelled does not stop the series.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            Spacer(Modifier.height(2.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { onAction("cancel_occurrence") }, enabled = !busy) { Text("Cancel this time") }
+                OutlinedButton(onClick = { onAction("stop_series") }, enabled = !busy) { Text("Stop repeats") }
+                OutlinedButton(onClick = { onAction("archive_series") }, enabled = !busy) { Text("Archive all repeats") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeriesActionDialog(
+    action: String?,
+    reminder: Reminder?,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    if (action == null || reminder == null) return
+    val (title, message) = when (action) {
+        "cancel_occurrence" -> "Cancel this occurrence" to "Cancel only this scheduled occurrence (${reminder.title})? The series will keep repeating."
+        "stop_series" -> "Stop repeats" to "Stop future occurrences of ${reminder.title}? Past occurrences are kept."
+        "archive_series" -> "Archive all repeats" to "Archive the whole series for ${reminder.title}? It will be hidden from the app."
+        else -> "Confirm" to "Are you sure?"
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(message) },
+        confirmButton = { TextButton(onClick = { onConfirm(action) }) { Text("Confirm") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+

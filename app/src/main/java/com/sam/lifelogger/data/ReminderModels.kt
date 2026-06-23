@@ -1,4 +1,4 @@
-package com.sam.lifelogger.data
+﻿package com.sam.lifelogger.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -11,6 +11,9 @@ private fun JSONObject.optNullableString(name: String): String? =
 private fun JSONObject.optNullableLong(name: String): Long? =
     if (!has(name) || isNull(name)) null else optLong(name)
 
+private fun JSONObject.optNullableInt(name: String): Int? =
+    if (!has(name) || isNull(name)) null else optInt(name)
+
 /**
  * Parse booleans that may arrive as SQLite integers (1/0) from the server.
  */
@@ -22,6 +25,78 @@ private fun JSONObject.optBoolCompat(name: String, default: Boolean = false): Bo
         is String -> value.equals("true", ignoreCase = true) || value == "1"
         else -> default
     }
+}
+
+/**
+ * A recurrence series descriptor attached to a generated reminder occurrence.
+ * Parsed tolerantly from the server "recurrence" object.
+ */
+data class Recurrence(
+    val id: Long,
+    val title: String?,
+    val kind: String?,
+    val status: String?,
+    val timezone: String?,
+    val frequency: String?,
+    val intervalCount: Int?,
+    val dayOfWeek: Int?,
+    val dayOfMonth: Int?,
+    val timeLocal: String?
+) {
+    companion object {
+        fun fromJson(obj: JSONObject?): Recurrence? {
+            if (obj == null || obj.isNullSafe()) return null
+            return Recurrence(
+                id = obj.optLong("id", 0L),
+                title = obj.optNullableString("title"),
+                kind = obj.optNullableString("kind"),
+                status = obj.optNullableString("status"),
+                timezone = obj.optNullableString("timezone"),
+                frequency = obj.optNullableString("frequency"),
+                intervalCount = obj.optNullableInt("interval_count"),
+                dayOfWeek = obj.optNullableInt("day_of_week"),
+                dayOfMonth = obj.optNullableInt("day_of_month"),
+                timeLocal = obj.optNullableString("time_local")
+            )
+        }
+
+        fun fromJsonString(raw: String?): Recurrence? {
+            if (raw.isNullOrBlank()) return null
+            return runCatching { fromJson(JSONObject(raw)) }.getOrNull()
+        }
+    }
+
+    fun toJsonString(): String? = runCatching {
+        JSONObject().apply {
+            put("id", id)
+            title?.let { put("title", it) }
+            kind?.let { put("kind", it) }
+            status?.let { put("status", it) }
+            timezone?.let { put("timezone", it) }
+            frequency?.let { put("frequency", it) }
+            intervalCount?.let { put("interval_count", it) }
+            dayOfWeek?.let { put("day_of_week", it) }
+            dayOfMonth?.let { put("day_of_month", it) }
+            timeLocal?.let { put("time_local", it) }
+        }.toString()
+    }.getOrNull()
+}
+
+private fun JSONObject.isNullSafe(): Boolean = length() == 0
+
+/** Serialise the action list to a JSON array string, or null when empty (to save space). */
+private fun List<String>.toJsonString(): String? {
+    if (isEmpty()) return null
+    return JSONArray().apply { forEach { put(it) } }.toString()
+}
+
+/** Parse a cached action list JSON array string back to a List<String>. */
+private fun parseActionsString(raw: String?): List<String> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return runCatching {
+        val arr = JSONArray(raw)
+        (0 until arr.length()).mapNotNull { i -> arr.optString(i, "").takeIf { it.isNotBlank() } }
+    }.getOrDefault(emptyList())
 }
 
 data class Reminder(
@@ -43,6 +118,11 @@ data class Reminder(
     val people: String?,
     val amount: String?,
     val recurrenceText: String?,
+    val isRecurring: Boolean = false,
+    val recurrenceSeriesId: Long? = null,
+    val recurrenceOccurrenceLocal: String? = null,
+    val recurrence: Recurrence? = null,
+    val actions: List<String> = emptyList(),
     val notificationJobs: List<NotificationJob> = emptyList()
 ) {
     companion object {
@@ -52,6 +132,20 @@ data class Reminder(
                     NotificationJob.fromJson(arr.getJSONObject(index))
                 }
             } ?: emptyList()
+
+            val actions = obj.optJSONArray("actions")?.let { arr ->
+                (0 until arr.length()).mapNotNull { index ->
+                    arr.optString(index, "").takeIf { it.isNotBlank() }
+                }
+            } ?: emptyList()
+
+            val recurrence = Recurrence.fromJson(obj.optJSONObject("recurrence"))
+            val recurrenceText = obj.optNullableString("recurrence_text")
+            val recurrenceSeriesId = obj.optNullableLong("recurrence_series_id")
+            val isRecurring = obj.optBoolCompat("is_recurring") ||
+                recurrence != null ||
+                recurrenceSeriesId != null ||
+                !recurrenceText.isNullOrBlank()
 
             return Reminder(
                 id = obj.getLong("id"),
@@ -71,7 +165,12 @@ data class Reminder(
                 location = obj.optNullableString("location"),
                 people = obj.optNullableString("people"),
                 amount = obj.optNullableString("amount"),
-                recurrenceText = obj.optNullableString("recurrence_text"),
+                recurrenceText = recurrenceText,
+                isRecurring = isRecurring,
+                recurrenceSeriesId = recurrenceSeriesId,
+                recurrenceOccurrenceLocal = obj.optNullableString("recurrence_occurrence_local"),
+                recurrence = recurrence,
+                actions = actions,
                 notificationJobs = jobs
             )
         }
@@ -100,27 +199,34 @@ data class Reminder(
         fun fromCacheEntities(
             reminder: ReminderEntity,
             jobs: List<NotificationJobEntity>
-        ): Reminder = Reminder(
-            id = reminder.id,
-            sourceSegmentId = reminder.sourceSegmentId,
-            kind = reminder.kind,
-            title = reminder.title,
-            description = reminder.description,
-            status = reminder.status,
-            needsReview = reminder.needsReview,
-            timezone = reminder.timezone,
-            scheduledAtLocal = reminder.scheduledAtLocal,
-            scheduledAtUtc = reminder.scheduledAtUtc,
-            endAtLocal = reminder.endAtLocal,
-            endAtUtc = reminder.endAtUtc,
-            schedulePrecision = reminder.schedulePrecision,
-            usedDefaultTime = reminder.usedDefaultTime,
-            location = reminder.location,
-            people = reminder.people,
-            amount = reminder.amount,
-            recurrenceText = reminder.recurrenceText,
-            notificationJobs = jobs.map { NotificationJob.fromCacheEntity(it) }
-        )
+        ): Reminder {
+            return Reminder(
+                id = reminder.id,
+                sourceSegmentId = reminder.sourceSegmentId,
+                kind = reminder.kind,
+                title = reminder.title,
+                description = reminder.description,
+                status = reminder.status,
+                needsReview = reminder.needsReview,
+                timezone = reminder.timezone,
+                scheduledAtLocal = reminder.scheduledAtLocal,
+                scheduledAtUtc = reminder.scheduledAtUtc,
+                endAtLocal = reminder.endAtLocal,
+                endAtUtc = reminder.endAtUtc,
+                schedulePrecision = reminder.schedulePrecision,
+                usedDefaultTime = reminder.usedDefaultTime,
+                location = reminder.location,
+                people = reminder.people,
+                amount = reminder.amount,
+                recurrenceText = reminder.recurrenceText,
+                isRecurring = reminder.isRecurring,
+                recurrenceSeriesId = reminder.recurrenceSeriesId,
+                recurrenceOccurrenceLocal = reminder.recurrenceOccurrenceLocal,
+                recurrence = Recurrence.fromJsonString(reminder.recurrenceJson),
+                actions = parseActionsString(reminder.actionsJson),
+                notificationJobs = jobs.map { NotificationJob.fromCacheEntity(it) }
+            )
+        }
     }
 
     fun toCacheEntity(): ReminderEntity = ReminderEntity(
@@ -141,7 +247,12 @@ data class Reminder(
         location = location,
         people = people,
         amount = amount,
-        recurrenceText = recurrenceText
+        recurrenceText = recurrenceText,
+        isRecurring = isRecurring,
+        recurrenceSeriesId = recurrenceSeriesId,
+        recurrenceOccurrenceLocal = recurrenceOccurrenceLocal,
+        recurrenceJson = recurrence?.toJsonString(),
+        actionsJson = actions.toJsonString()
     )
 }
 
@@ -248,7 +359,12 @@ data class ReminderEntity(
     val location: String?,
     val people: String?,
     val amount: String?,
-    val recurrenceText: String?
+    val recurrenceText: String?,
+    val isRecurring: Boolean = false,
+    val recurrenceSeriesId: Long? = null,
+    val recurrenceOccurrenceLocal: String? = null,
+    val recurrenceJson: String? = null,
+    val actionsJson: String? = null
 )
 
 @Entity(tableName = "cached_notification_jobs")

@@ -1,4 +1,4 @@
-package com.sam.lifelogger.calendar
+﻿package com.sam.lifelogger.calendar
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -67,7 +67,7 @@ class CalendarAgendaModelsTest {
         ).single { it.date == day }
 
         assertEquals(6, cell.items.size)
-        assertEquals(4, cell.visibleColors.size)
+        assertEquals(4, cell.visibleDots.size)
         assertEquals(2, cell.overflowCount)
     }
 
@@ -97,6 +97,40 @@ class CalendarAgendaModelsTest {
         assertTrue(cells.single { it.date == LocalDate.parse("2026-06-20") }.items.contains(holiday))
     }
 
+    @Test
+    fun monthAndWeekUsePendingTodayOrFutureItemsOnly() {
+        val today = LocalDate.parse("2026-06-18")
+        val items = listOf(
+            item(1, "Past pending", today.minusDays(1), status = "pending"),
+            item(2, "Today pending", today, status = "pending"),
+            item(3, "Future pending", today.plusDays(1), status = "pending"),
+            item(4, "Done today", today, status = "done"),
+            item(5, "Archived future", today.plusDays(2), status = "archived")
+        )
+
+        assertEquals(
+            listOf(2L, 3L),
+            CalendarReminderFilters.weekMonthItems(items, today).map { it.sourceId }
+        )
+    }
+
+    @Test
+    fun allUsesEveryNonArchivedItemIncludingPastAndDone() {
+        val today = LocalDate.parse("2026-06-18")
+        val items = listOf(
+            item(1, "Past pending", today.minusDays(1), status = "pending"),
+            item(2, "Today pending", today, status = "pending"),
+            item(3, "Future pending", today.plusDays(1), status = "pending"),
+            item(4, "Done today", today, status = "done"),
+            item(5, "Archived future", today.plusDays(2), status = "archived")
+        )
+
+        assertEquals(
+            listOf(1L, 2L, 3L, 4L),
+            CalendarReminderFilters.allItems(items).map { it.sourceId }
+        )
+    }
+
     private fun item(id: Long, title: String, date: LocalDate): LifeCalendarItem =
         LifeCalendarItem(
             id = "Reminder-$id",
@@ -111,4 +145,7 @@ class CalendarAgendaModelsTest {
             status = "pending",
             needsReview = false
         )
+
+    private fun item(id: Long, title: String, date: LocalDate, status: String): LifeCalendarItem =
+        item(id, title, date).copy(status = status)
 }

@@ -1,4 +1,4 @@
-package com.sam.lifelogger.data
+﻿package com.sam.lifelogger.data
 
 import android.content.Context
 import androidx.room.Database
@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReminderEntity::class,
         NotificationJobEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -97,6 +97,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE cached_reminders ADD COLUMN isRecurring INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE cached_reminders ADD COLUMN recurrenceSeriesId INTEGER")
+                db.execSQL("ALTER TABLE cached_reminders ADD COLUMN recurrenceOccurrenceLocal TEXT")
+                db.execSQL("ALTER TABLE cached_reminders ADD COLUMN recurrenceJson TEXT")
+                db.execSQL("ALTER TABLE cached_reminders ADD COLUMN actionsJson TEXT")
+            }
+        }
+
         fun get(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -104,7 +114,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "lifelogger.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(
+                        MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7
+                    )
                     .build().also { INSTANCE = it }
             }
     }

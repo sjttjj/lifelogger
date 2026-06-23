@@ -1,4 +1,4 @@
-package com.sam.lifelogger
+﻿package com.sam.lifelogger
 
 import android.Manifest
 import android.app.ActivityManager
@@ -23,6 +23,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -63,6 +65,9 @@ import com.sam.lifelogger.notification.ReminderNotificationHelper
 import com.sam.lifelogger.ui.RecordingsScreen
 import com.sam.lifelogger.ui.theme.LifeloggerTheme
 import com.sam.lifelogger.data.uploadPendingNow
+import com.sam.lifelogger.data.WeatherResponse
+import com.sam.lifelogger.data.parseWeatherResponse
+import com.sam.lifelogger.ui.WeatherDashboardContent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -83,6 +88,7 @@ import com.sam.lifelogger.data.Reminder
 import com.sam.lifelogger.data.ReminderDisplayFormatter
 import com.sam.lifelogger.data.ReminderSyncManager
 import com.sam.lifelogger.data.ReminderSyncWorker
+import com.sam.lifelogger.ui.AskScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -90,10 +96,16 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
+    private var pendingAudioPermissionMode: RecordingMode? = null
+
     private val audioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val mode = pendingAudioPermissionMode ?: RecordingMode.NORMAL
+            pendingAudioPermissionMode = null
             if (granted) {
-                toggleNormalRecording()
+                startRecordingAfterAudioPermission(mode)
+            } else {
+                Toast.makeText(this, "Microphone permission is required to record", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -147,7 +159,7 @@ class MainActivity : ComponentActivity() {
         if (!isServiceRunning(RecordingService::class.java)) {
             val p = getSharedPreferences("lifelogger_prefs", Context.MODE_PRIVATE)
             if (p.getBoolean("is_recording", false)) {
-                Log.w(TAG, "Stale is_recording=true detected — resetting")
+                Log.w(TAG, "Stale is_recording=true detected - resetting")
                 p.edit()
                     .putBoolean("is_recording", false)
                     .remove("recording_started_at")
@@ -167,7 +179,7 @@ class MainActivity : ComponentActivity() {
         // Handle squeeze-triggered intent if this is a fresh launch
         handleSqueezeIntent(intent)
 
-        // Immersive mode — hide status + navigation bars, swipe to reveal.
+        // Immersive mode - hide status + navigation bars, swipe to reveal.
         // Deferred via decorView.post to avoid NPE when the DecorView isn't attached yet.
         window.decorView.post {
             window.insetsController?.let { controller ->
@@ -177,11 +189,6 @@ class MainActivity : ComponentActivity() {
         }
 
         requestNotificationPermissionIfNeeded()
-
-        // Clear stale alarm tracking on each launch — SharedPreferences
-        // survives reinstalls which orphans old alarm PendingIntents.
-        // The next sync will re-register alarms from scratch.
-        ReminderNotificationHelper.clearScheduledTracking(this)
 
         setContent {
             LifeloggerTheme {
@@ -221,7 +228,7 @@ class MainActivity : ComponentActivity() {
                 // Combined sync status: manual overrides auto, then fallback to Idle
                 val syncStatus = manualSyncStatus ?: autoSyncStatus ?: "Idle"
 
-                // Time updater – ticks every second
+                // Time updater - ticks every second
                 LaunchedEffect(Unit) {
                     val format = SimpleDateFormat("HH:mm", Locale.getDefault())
                     while (true) {
@@ -230,7 +237,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Battery + temp updater – every 30 seconds
+                // Battery + temp updater - every 30 seconds
                 LaunchedEffect(Unit) {
                     while (true) {
                         try {
@@ -258,7 +265,25 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Next-chunk countdown – reads shared prefs written by RecordingService
+
+                // Weather state
+                var weatherData by remember { mutableStateOf<WeatherResponse?>(null) }
+
+                // Fetch weather on launch and every 10 minutes
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        try {
+                            val json = ApiClient.getWeather(context)
+                            weatherData = parseWeatherResponse(json)
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "Failed to fetch weather", e)
+                            weatherData = null
+                        }
+                        delay(600_000L) // 10 minutes
+                    }
+                }
+
+                // Next-chunk countdown - reads shared prefs written by RecordingService
                 LaunchedEffect(Unit) {
                     while (true) {
                         val isRecording = prefs.getBoolean(KEY_IS_RECORDING, false)
@@ -297,9 +322,9 @@ class MainActivity : ComponentActivity() {
                         val failed = autoWorkInfos.any { it.state == WorkInfo.State.FAILED }
 
                         autoSyncStatus = when {
-                            running -> "Auto sync in progress…"
-                            enqueued -> "Auto sync queued…"
-                            failed -> "Auto sync failed – will retry"
+                            running -> "Auto sync in progress..."
+                            enqueued -> "Auto sync queued..."
+                            failed -> "Auto sync failed - will retry"
                             else -> null
                         }
                     }
@@ -316,6 +341,7 @@ class MainActivity : ComponentActivity() {
                         if (granted) {
                             toggleNormalRecording()
                         } else {
+                            pendingAudioPermissionMode = RecordingMode.NORMAL
                             audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
@@ -329,14 +355,14 @@ class MainActivity : ComponentActivity() {
                     },
                     onUploadPending = {
                         scope.launch {
-                            manualSyncStatus = "Checking pending recordings…"
+                            manualSyncStatus = "Checking pending recordings..."
 
                             try {
                                 uploadPendingNow(context.applicationContext)
                                 manualSyncStatus = "All recordings synced"
                             } catch (e: Exception) {
                                 Log.e("MainActivity", "Manual sync error", e)
-                                manualSyncStatus = "Sync error – will retry automatically"
+                                manualSyncStatus = "Sync error - will retry automatically"
                             }
 
                             delay(3_000L)
@@ -347,7 +373,8 @@ class MainActivity : ComponentActivity() {
                     batteryLevel = batteryLevel,
                     batteryTemp = batteryTemp,
                     currentTime = currentTime,
-                    timeToNextChunk = timeToNextChunk
+                    timeToNextChunk = timeToNextChunk,
+                    weatherData = weatherData
                 )
             }
         }
@@ -432,19 +459,46 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun toggleNormalRecording() {
+        if (!ensureAudioPermissionFor(RecordingMode.NORMAL)) return
         recordingModeCoordinator.toggleNormal()
         persistRecordingCoordinatorState()
     }
 
     private fun toggleSessionRecording() {
+        if (!ensureAudioPermissionFor(RecordingMode.SESSION)) return
         recordingModeCoordinator.toggleSession()
         persistRecordingCoordinatorState()
     }
 
     private fun startReminderRecordingFromUi(): Boolean {
+        if (!ensureAudioPermissionFor(RecordingMode.REMINDER)) return false
         val started = recordingModeCoordinator.startReminder()
         persistRecordingCoordinatorState()
         return started
+    }
+
+    private fun ensureAudioPermissionFor(mode: RecordingMode): Boolean {
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) return true
+
+        pendingAudioPermissionMode = mode
+        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        return false
+    }
+
+    private fun startRecordingAfterAudioPermission(mode: RecordingMode) {
+        when (mode) {
+            RecordingMode.NORMAL -> toggleNormalRecording()
+            RecordingMode.SESSION -> toggleSessionRecording()
+            RecordingMode.REMINDER -> {
+                if (startReminderRecordingFromUi()) {
+                    SqueezeActionMapper.startReminderModeTimerAfterPermissionGrant()
+                }
+            }
+        }
     }
 
     private fun persistRecordingCoordinatorState() {
@@ -601,12 +655,14 @@ fun AppNavigation(
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit,
     onUploadPending: () -> Unit,
+    onOpenAsk: () -> Unit = {},
     onOpenPrompts: () -> Unit = {},
     syncStatus: String,
     batteryLevel: Int?,
     batteryTemp: Float?,
     currentTime: String,
-    timeToNextChunk: String?
+    timeToNextChunk: String?,
+    weatherData: WeatherResponse?
 ) {
     val navController = rememberNavController()
     var lastSearchQuery by remember { mutableStateOf<String?>(null) }
@@ -625,12 +681,14 @@ fun AppNavigation(
                 onOpenRecordings = { navController.navigate("recordings") },
                 onOpenViewer = { navController.navigate("viewer")},
                 onOpenSettings = { navController.navigate("settings")},
+                onOpenAsk = { navController.navigate("ask") },
                 onOpenCalendar = { navController.navigate("calendar") },
                 syncStatus = syncStatus,
                 batteryLevel = batteryLevel,
                 batteryTemp = batteryTemp,
                 currentTime = currentTime,
-                timeToNextChunk = timeToNextChunk
+                timeToNextChunk = timeToNextChunk,
+                weatherData = weatherData
             )
         }
 
@@ -730,8 +788,14 @@ fun AppNavigation(
                 onSaved = { navController.popBackStack() }
             )
         }
+
+        composable("ask") {
+            AskScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        }
     }
-}
 
 @Composable
 fun MainScreen(
@@ -742,13 +806,15 @@ fun MainScreen(
     onOpenRecordings: () -> Unit,
     onOpenViewer: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAsk: () -> Unit = {},
     onOpenPrompts: () -> Unit = {},
     onOpenCalendar: () -> Unit = {},
     syncStatus: String,
     batteryLevel: Int?,
     batteryTemp: Float?,
     currentTime: String,
-    timeToNextChunk: String?
+    timeToNextChunk: String?,
+    weatherData: WeatherResponse?
 ) {
     val context = LocalContext.current
     val prefs = remember {
@@ -792,15 +858,22 @@ fun MainScreen(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp),
+                .fillMaxWidth()
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            HomeTitleRow(onOpenSettings = onOpenSettings)
-            Spacer(modifier = Modifier.height(8.dp))
+            HomeTitleRow(
+                onOpenSettings = onOpenSettings,
+                batteryLevel = batteryLevel,
+                batteryTemp = batteryTemp
+            )
+
             DashboardCarousel(
                 reminders = dashboardReminders,
-                onOpenCalendar = onOpenCalendar
+                weatherData = weatherData,
+                onOpenCalendar = onOpenCalendar,
+                onOpenAsk = onOpenAsk
             )
             RecordingStatusStrip(
                 isRecording = isRecording,
@@ -818,28 +891,51 @@ fun MainScreen(
                 },
                 onOpenViewer = onOpenViewer,
                 onOpenCalendar = onOpenCalendar,
-                onOpenRecordings = onOpenRecordings,
-                onOpenSettings = onOpenSettings
+                onOpenRecordings = onOpenRecordings
             )
         }
     }
 }
-
 @Composable
-private fun HomeTitleRow(onOpenSettings: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Lifelogger",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold
-        )
-        IconButton(onClick = onOpenSettings) {
-            Icon(Icons.Filled.SettingsIcon, contentDescription = "Settings")
+private fun HomeTitleRow(
+    onOpenSettings: () -> Unit,
+    batteryLevel: Int?,
+    batteryTemp: Float?
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Lifelogger",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Filled.SettingsIcon, contentDescription = "Settings")
+            }
         }
+        // Battery & temperature status
+        val batteryText = buildString {
+            if (batteryLevel != null) {
+                append("Battery ${batteryLevel}%")
+            }
+            if (batteryTemp != null) {
+                if (isNotEmpty()) append("  ·  ")
+                append("Temp ${"%.1f".format(batteryTemp)}\u00B0C")
+            }
+            if (isEmpty()) {
+                append("Battery info unavailable")
+            }
+        }
+        Text(
+            text = batteryText,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 2.dp)
+        )
     }
 }
 
@@ -847,9 +943,11 @@ private fun HomeTitleRow(onOpenSettings: () -> Unit) {
 @Composable
 private fun DashboardCarousel(
     reminders: List<Reminder>,
-    onOpenCalendar: () -> Unit
+    weatherData: WeatherResponse?,
+    onOpenCalendar: () -> Unit,
+    onOpenAsk: () -> Unit = {},
 ) {
-    val moduleCount = 3
+    val moduleCount = 4
     val pagerState = rememberPagerState(pageCount = { moduleCount })
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -877,18 +975,16 @@ private fun DashboardCarousel(
         ) { page ->
             when (page) {
                 0 -> ReminderDashboardCard(reminders, onOpenCalendar)
-                1 -> PlaceholderDashboardCard(
+                1 -> WeatherDashboardCard(weatherData)
+                2 -> PlaceholderDashboardCard(
                     title = "Finance",
                     items = listOf(
                         "Cashflow snapshot" to "Future integration",
                         "Bills and alerts" to "Future money reminders"
                     )
                 )
-                2 -> PlaceholderDashboardCard(
-                    title = "Ask AI",
-                    items = listOf(
-                        "Ask across notes" to "Future transcript and reminder search"
-                    )
+                3 -> AskDashboardCard(
+                    onOpenAsk = onOpenAsk
                 )
             }
         }
@@ -945,6 +1041,27 @@ private fun ReminderDashboardCard(
     }
 }
 
+
+@Composable
+private fun AskDashboardCard(
+    onOpenAsk: () -> Unit
+) {
+    DashboardCard(
+        title = "Ask AI",
+        chip = "Ask now",
+        enabled = true,
+        onClick = onOpenAsk
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            MiniDashboardItem(
+                title = "Ask across notes",
+                subtitle = "Summaries, reminders, events, tasks, WhatsApp",
+                trailing = ""
+            )
+        }
+    }
+}
+
 @Composable
 private fun PlaceholderDashboardCard(
     title: String,
@@ -963,6 +1080,27 @@ private fun PlaceholderDashboardCard(
                     trailing = ""
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun WeatherDashboardCard(
+    weather: WeatherResponse?
+) {
+    DashboardCard(
+        title = if (weather != null) weather.location.name else "Weather",
+        chip = if (weather != null) "Feels like " + weather.current.apparentTemperatureC.toInt().toString() + "\u00B0C" else "Unavailable",
+        enabled = false
+    ) {
+        if (weather != null) {
+            WeatherDashboardContent(weather)
+        } else {
+            Text(
+                text = "Weather unavailable",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -1160,8 +1298,7 @@ private fun HomeActionGrid(
     onRecordClick: () -> Unit,
     onOpenViewer: () -> Unit,
     onOpenCalendar: () -> Unit,
-    onOpenRecordings: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenRecordings: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -1173,12 +1310,10 @@ private fun HomeActionGrid(
                 modifier = Modifier.weight(1f)
             )
             HomeActionButton("Life Log", Icons.Filled.ViewList, onOpenViewer, Modifier.weight(1f))
-            HomeActionButton("Calendar", Icons.Filled.Event, onOpenCalendar, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            HomeActionButton("Calendar", Icons.Filled.Event, onOpenCalendar, Modifier.weight(1f))
             HomeActionButton("Recordings", Icons.Filled.LibraryMusic, onOpenRecordings, Modifier.weight(1f))
-            Spacer(modifier = Modifier.weight(1f))
-            HomeActionButton("Settings", Icons.Filled.SettingsIcon, onOpenSettings, Modifier.weight(1f))
         }
     }
 }

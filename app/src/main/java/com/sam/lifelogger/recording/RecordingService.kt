@@ -1,5 +1,6 @@
 package com.sam.lifelogger.recording
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,11 +8,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -239,7 +242,25 @@ class RecordingService : Service() {
         }
 
         val notification = buildNotification("Recording…")
-        startForeground(NOTIFICATION_ID, notification)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w("RecordingService", "Cannot start recording: RECORD_AUDIO is not granted")
+            setRecordingActive(false)
+            setActiveRecordingMode(null)
+            stopSelf()
+            return
+        }
+
+        try {
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            Log.e("RecordingService", "Cannot start microphone foreground service", e)
+            setRecordingActive(false)
+            setActiveRecordingMode(null)
+            stopSelf()
+            return
+        }
 
         // Generate a fresh session ID if this is a brand-new session start.
         // The first chunk will stamp it onto the DB entity; reminder interruptions

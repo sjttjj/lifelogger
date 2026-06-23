@@ -56,6 +56,28 @@ object ApiClient {
         }
     }
 
+    /**
+     * POST with no request body. Used for action endpoints (done/cancel/series stop/archive)
+     * that take no parameters. Throws on non-2xx.
+     */
+    private suspend fun httpPostEmpty(url: String): String = withContext(Dispatchers.IO) {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.connectTimeout = 10_000
+        conn.readTimeout = 30_000
+        try {
+            val code = conn.responseCode
+            if (code in 200..299) {
+                conn.inputStream?.bufferedReader()?.use { it.readText() } ?: ""
+            } else {
+                val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "Error $code"
+                throw Exception("POST $url failed HTTP $code: $errorBody")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     /** GET /api/dates */
     suspend fun getDates(context: Context): String {
         val base = getBaseUrl(context)
@@ -146,6 +168,12 @@ object ApiClient {
         return httpGet("$base/api/reminders?status=pending&needs_review=true")
     }
 
+    /** GET /api/reminders?status=all — full list across all statuses, for the All/archive view. */
+    suspend fun getAllReminders(context: Context): String {
+        val base = getBaseUrl(context)
+        return httpGet("$base/api/reminders?status=all")
+    }
+
     /** PATCH /api/reminders/{id} */
     suspend fun patchReminder(context: Context, id: Long, patch: ReminderPatch): String = withContext(Dispatchers.IO) {
         val base = getBaseUrl(context)
@@ -168,6 +196,30 @@ object ApiClient {
         } finally {
             conn.disconnect()
         }
+    }
+
+    /** POST /api/reminders/{id}/actions/done — preferred over patching status for marking done. */
+    suspend fun markReminderDone(context: Context, id: Long): String {
+        val base = getBaseUrl(context)
+        return httpPostEmpty("$base/api/reminders/$id/actions/done")
+    }
+
+    /** POST /api/reminders/{id}/actions/cancel — cancel the current occurrence / reject a review item. */
+    suspend fun cancelReminder(context: Context, id: Long): String {
+        val base = getBaseUrl(context)
+        return httpPostEmpty("$base/api/reminders/$id/actions/cancel")
+    }
+
+    /** POST /api/recurrence-series/{seriesId}/actions/stop — stop future occurrences, keep history. */
+    suspend fun stopRecurrenceSeries(context: Context, seriesId: Long): String {
+        val base = getBaseUrl(context)
+        return httpPostEmpty("$base/api/recurrence-series/$seriesId/actions/stop")
+    }
+
+    /** POST /api/recurrence-series/{seriesId}/actions/archive — archive the whole series. */
+    suspend fun archiveRecurrenceSeries(context: Context, seriesId: Long): String {
+        val base = getBaseUrl(context)
+        return httpPostEmpty("$base/api/recurrence-series/$seriesId/actions/archive")
     }
 
     /** POST /api/reminders/{id}/notifications */
@@ -321,6 +373,128 @@ object ApiClient {
             } else {
                 val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "Error $code"
                 throw Exception("Update summary failed HTTP $code: $errorBody")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+    /** GET /api/weather */
+    suspend fun getWeather(context: Context): String {
+        val base = getBaseUrl(context)
+        return httpGet("$base/api/weather")
+    }
+
+    /** POST /api/ask — send a text question to the LLM */
+    suspend fun askText(
+        context: Context,
+        question: String,
+        scope: AskScope? = null
+    ): String = withContext(Dispatchers.IO) {
+        val base = getBaseUrl(context)
+        val url = URL("$base/api/ask")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.doOutput = true
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 60_000
+        try {
+            val jsonBody = JSONObject().apply {
+                put("question", question)
+                scope?.let { put("scope", it.toJson()) }
+            }
+            conn.outputStream.use { it.write(jsonBody.toString().toByteArray()) }
+            val code = conn.responseCode
+            if (code in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "Error $code"
+                throw Exception("Ask text failed HTTP $code: $errorBody")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /** POST /api/ask/audio — upload a voice question for transcription and answering */
+    suspend fun askAudio(
+        context: Context,
+        audioFile: java.io.File,
+        scope: AskScope? = null,
+        recordedAtMs: String? = null,
+        recordedAtIso: String? = null,
+        recordedTimezone: String? = null
+    ): String = withContext(Dispatchers.IO) {
+        val base = getBaseUrl(context)
+        val url = URL("$base/api/ask/audio")
+        val boundary = "----AskBoundary${System.currentTimeMillis()}"
+        val lineEnd = "\r\n"
+
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.doOutput = true
+        conn.doInput = true
+        conn.useCaches = false
+        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        conn.setRequestProperty("Connection", "close")
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 120_000
+
+        try {
+            val output = java.io.DataOutputStream(conn.outputStream)
+
+            // Audio file part
+            output.writeBytes("--$boundary$lineEnd")
+            output.writeBytes("Content-Disposition: form-data; name=\"audio\"; filename=\"${audioFile.name}\"$lineEnd")
+            output.writeBytes("Content-Type: audio/mp4$lineEnd")
+            output.writeBytes(lineEnd)
+            audioFile.inputStream().use { input ->
+                input.copyTo(output)
+            }
+            output.writeBytes(lineEnd)
+
+            // Optional scope as JSON string
+            if (scope != null) {
+                output.writeBytes("--$boundary$lineEnd")
+                output.writeBytes("Content-Disposition: form-data; name=\"scope\"$lineEnd")
+                output.writeBytes(lineEnd)
+                output.writeBytes(scope.toJson().toString())
+                output.writeBytes(lineEnd)
+            }
+
+            // Optional recording metadata
+            if (recordedAtMs != null) {
+                output.writeBytes("--$boundary$lineEnd")
+                output.writeBytes("Content-Disposition: form-data; name=\"recorded_at_ms\"$lineEnd")
+                output.writeBytes(lineEnd)
+                output.writeBytes(recordedAtMs)
+                output.writeBytes(lineEnd)
+            }
+            if (recordedAtIso != null) {
+                output.writeBytes("--$boundary$lineEnd")
+                output.writeBytes("Content-Disposition: form-data; name=\"recorded_at_iso\"$lineEnd")
+                output.writeBytes(lineEnd)
+                output.writeBytes(recordedAtIso)
+                output.writeBytes(lineEnd)
+            }
+            if (recordedTimezone != null) {
+                output.writeBytes("--$boundary$lineEnd")
+                output.writeBytes("Content-Disposition: form-data; name=\"recorded_timezone\"$lineEnd")
+                output.writeBytes(lineEnd)
+                output.writeBytes(recordedTimezone)
+                output.writeBytes(lineEnd)
+            }
+
+            output.writeBytes("--$boundary--$lineEnd")
+            output.flush()
+            output.close()
+
+            val code = conn.responseCode
+            if (code in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "Error $code"
+                throw Exception("Ask audio failed HTTP $code: $errorBody")
             }
         } finally {
             conn.disconnect()

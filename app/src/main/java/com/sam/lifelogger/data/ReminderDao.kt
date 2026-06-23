@@ -37,7 +37,14 @@ interface ReminderDao {
     suspend fun deleteAllNotificationJobs()
 
     @Transaction
-    suspend fun replaceUpcoming(reminders: List<Reminder>) {
+    suspend fun upsertUpcoming(reminders: List<Reminder>) {
+        deleteAllNotificationJobs()
+        upsertReminders(reminders.map { it.toCacheEntity() })
+        upsertNotificationJobs(reminders.flatMap { it.notificationJobs }.map { it.toCacheEntity() })
+    }
+
+    @Transaction
+    suspend fun replaceAllSynced(reminders: List<Reminder>) {
         deleteAllNotificationJobs()
         deleteAllReminders()
         upsertReminders(reminders.map { it.toCacheEntity() })
