@@ -1,6 +1,7 @@
 ﻿package com.sam.lifelogger.calendar
 
 import com.sam.lifelogger.data.Reminder
+import com.sam.lifelogger.data.ReminderRecurrenceInference
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -29,7 +30,7 @@ data class LifeCalendarItem(
     val schedulePrecision: String = "date"
 ) {
     companion object {
-        fun fromReminder(reminder: Reminder): LifeCalendarItem =
+        fun fromReminder(reminder: Reminder, today: LocalDate = LocalDate.now()): LifeCalendarItem =
             LifeCalendarItem(
                 id = "reminder:${reminder.id}",
                 sourceType = LifeCalendarItemType.Reminder,
@@ -37,7 +38,9 @@ data class LifeCalendarItem(
                 title = reminder.title,
                 description = reminder.description,
                 startUtc = reminder.scheduledAtUtc,
-                startLocal = reminder.scheduledAtLocal ?: reminder.recurrenceOccurrenceLocal,
+                startLocal = reminder.scheduledAtLocal
+                    ?: reminder.recurrenceOccurrenceLocal
+                    ?: ReminderRecurrenceInference.inferOccurrenceLocal(reminder, today),
                 endUtc = reminder.endAtUtc,
                 endLocal = reminder.endAtLocal,
                 status = reminder.status,

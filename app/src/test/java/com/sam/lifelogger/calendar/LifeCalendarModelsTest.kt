@@ -1,5 +1,6 @@
 package com.sam.lifelogger.calendar
 
+import com.sam.lifelogger.data.Recurrence
 import com.sam.lifelogger.data.Reminder
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -52,10 +53,40 @@ class LifeCalendarModelsTest {
         assertEquals(listOf(LocalDate.of(2026, 6, 17)), item.coveredDates())
     }
 
+    @Test
+    fun infersWeeklyRecurringDateWhenServerOmittedConcreteOccurrence() {
+        val reminder = reminder(
+            scheduledAtLocal = null,
+            scheduledAtUtc = null,
+            endAtLocal = null,
+            isRecurring = true,
+            recurrence = Recurrence(
+                id = 100,
+                title = null,
+                kind = null,
+                status = "active",
+                timezone = "Australia/Sydney",
+                frequency = "weekly",
+                intervalCount = 1,
+                dayOfWeek = 1,
+                dayOfMonth = null,
+                timeLocal = "09:00"
+            )
+        )
+
+        val item = LifeCalendarItem.fromReminder(reminder, today = LocalDate.of(2026, 6, 24))
+
+        assertEquals("2026-06-29T09:00:00+10:00", item.startLocal)
+        assertEquals(listOf(LocalDate.of(2026, 6, 29)), item.coveredDates())
+    }
+
     private fun reminder(
         scheduledAtLocal: String?,
         endAtLocal: String?,
-        recurrenceOccurrenceLocal: String? = null
+        recurrenceOccurrenceLocal: String? = null,
+        scheduledAtUtc: String? = "2026-06-09T23:00:00Z",
+        isRecurring: Boolean = false,
+        recurrence: Recurrence? = null
     ): Reminder {
         return Reminder(
             id = 7,
@@ -67,7 +98,7 @@ class LifeCalendarModelsTest {
             needsReview = false,
             timezone = "Australia/Sydney",
             scheduledAtLocal = scheduledAtLocal,
-            scheduledAtUtc = "2026-06-09T23:00:00Z",
+            scheduledAtUtc = scheduledAtUtc,
             endAtLocal = endAtLocal,
             endAtUtc = if (endAtLocal == null) null else "2026-06-12T07:00:00Z",
             schedulePrecision = "datetime",
@@ -76,7 +107,10 @@ class LifeCalendarModelsTest {
             people = null,
             amount = null,
             recurrenceText = null,
+            isRecurring = isRecurring,
+            recurrenceSeriesId = if (isRecurring) 100 else null,
             recurrenceOccurrenceLocal = recurrenceOccurrenceLocal,
+            recurrence = recurrence,
             notificationJobs = emptyList()
         )
     }

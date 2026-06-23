@@ -58,6 +58,7 @@ import com.sam.lifelogger.data.ReminderNotificationConfig
 import com.sam.lifelogger.data.ReminderNotificationOffset
 import com.sam.lifelogger.data.ReminderNotificationOffsetUnit
 import com.sam.lifelogger.data.ReminderPatch
+import com.sam.lifelogger.data.ReminderRecurrenceInference
 import com.sam.lifelogger.data.ReminderSyncManager
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -123,11 +124,14 @@ fun EditReminderScreen(
             description = loaded.description.orEmpty()
             kind = loaded.kind
             status = loaded.status
-            (loaded.scheduledAtLocal ?: loaded.recurrenceOccurrenceLocal)?.let {
+            (loaded.scheduledAtLocal
+                ?: loaded.recurrenceOccurrenceLocal
+                ?: ReminderRecurrenceInference.inferOccurrenceLocal(loaded)
+            )?.let {
                 runCatching {
                     val parsed = OffsetDateTime.parse(it)
                     dateText = parsed.toLocalDate().toString()
-                    if (loaded.schedulePrecision == "datetime") {
+                    if (loaded.schedulePrecision == "datetime" || loaded.scheduledAtLocal == null && !loaded.recurrence?.timeLocal.isNullOrBlank()) {
                         timeText = parsed.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))
                     }
                 }
@@ -712,31 +716,77 @@ private fun TimePickerField(
 @Composable
 private fun RepeatsSection(reminder: Reminder?, busy: Boolean, onAction: (String) -> Unit) {
     val recurrence = reminder?.recurrence
-    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = "Repeats" + (recurrence?.frequency?.let { " $it" } ?: ""),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
+    var repeatFrequencyExpanded by remember { mutableStateOf(false) }
+    var repeatDayExpanded by remember { mutableStateOf(false) }
+    val repeatFrequency = recurrence?.frequency?.replaceFirstChar { it.uppercase() } ?: "Repeating"
+    val repeatDay = recurrence?.let { recurrenceDayLabel(it) } ?: reminder?.recurrenceText.orEmpty()
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        DropdownField(
+            label = "Repeat frequency",
+            value = repeatFrequency,
+            expanded = repeatFrequencyExpanded,
+            options = listOf(repeatFrequency),
+            onExpandedChange = { repeatFrequencyExpanded = it },
+            onSelected = { repeatFrequencyExpanded = false }
+        )
+        if (repeatDay.isNotBlank()) {
+            DropdownField(
+                label = "Repeat day",
+                value = repeatDay,
+                expanded = repeatDayExpanded,
+                options = listOf(repeatDay),
+                onExpandedChange = { repeatDayExpanded = it },
+                onSelected = { repeatDayExpanded = false }
             )
-            reminder?.recurrenceText?.takeIf { it.isNotBlank() }?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "This is one scheduled occurrence. These actions affect the whole series. Marking this done or cancelled does not stop the series.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            Spacer(Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { onAction("cancel_occurrence") }, enabled = !busy) { Text("Cancel this time") }
-                OutlinedButton(onClick = { onAction("stop_series") }, enabled = !busy) { Text("Stop repeats") }
-                OutlinedButton(onClick = { onAction("archive_series") }, enabled = !busy) { Text("Archive all repeats") }
-            }
         }
+        reminder?.recurrenceText?.takeIf { it.isNotBlank() && it != repeatDay }?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = "This is one scheduled occurrence. These actions affect the whole series. Marking this done or cancelled does not stop the series.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedButton(
+            onClick = { onAction("cancel_occurrence") },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Cancel this time") }
+        OutlinedButton(
+            onClick = { onAction("stop_series") },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Stop repeats") }
+        OutlinedButton(
+            onClick = { onAction("archive_series") },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Archive all repeats") }
     }
+}
+
+private fun recurrenceDayLabel(recurrence: com.sam.lifelogger.data.Recurrence): String = when {
+    recurrence.frequency.equals("weekly", ignoreCase = true) && recurrence.dayOfWeek != null ->
+        dayOfWeekName(recurrence.dayOfWeek)
+    recurrence.frequency.equals("monthly", ignoreCase = true) && recurrence.dayOfMonth != null ->
+        "Day ${recurrence.dayOfMonth}"
+    else -> ""
+}
+
+private fun dayOfWeekName(value: Int): String = when (value) {
+    0, 7 -> "Sunday"
+    1 -> "Monday"
+    2 -> "Tuesday"
+    3 -> "Wednesday"
+    4 -> "Thursday"
+    5 -> "Friday"
+    6 -> "Saturday"
+    else -> "Day $value"
 }
 
 @Composable

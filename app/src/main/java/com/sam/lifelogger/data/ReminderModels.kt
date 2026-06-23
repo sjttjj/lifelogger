@@ -41,7 +41,9 @@ data class Recurrence(
     val intervalCount: Int?,
     val dayOfWeek: Int?,
     val dayOfMonth: Int?,
-    val timeLocal: String?
+    val timeLocal: String?,
+    val ordinal: Int? = null,
+    val weekdayOrdinal: Int? = null
 ) {
     companion object {
         fun fromJson(obj: JSONObject?): Recurrence? {
@@ -56,7 +58,9 @@ data class Recurrence(
                 intervalCount = obj.optNullableInt("interval_count"),
                 dayOfWeek = obj.optNullableInt("day_of_week"),
                 dayOfMonth = obj.optNullableInt("day_of_month"),
-                timeLocal = obj.optNullableString("time_local")
+                timeLocal = obj.optNullableString("time_local"),
+                ordinal = obj.optNullableInt("ordinal"),
+                weekdayOrdinal = obj.optNullableInt("weekday_ordinal")
             )
         }
 
@@ -78,6 +82,8 @@ data class Recurrence(
             dayOfWeek?.let { put("day_of_week", it) }
             dayOfMonth?.let { put("day_of_month", it) }
             timeLocal?.let { put("time_local", it) }
+            ordinal?.let { put("ordinal", it) }
+            weekdayOrdinal?.let { put("weekday_ordinal", it) }
         }.toString()
     }.getOrNull()
 }
