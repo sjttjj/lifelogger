@@ -110,6 +110,8 @@ fun EditReminderScreen(
     var statusExpanded by remember { mutableStateOf(false) }
     var seriesAction by remember { mutableStateOf<String?>(null) }
     var seriesBusy by remember { mutableStateOf(false) }
+    var repeatFrequency by remember { mutableStateOf("Weekly") }
+    var repeatDayOfWeek by remember { mutableStateOf(1) }
 
     LaunchedEffect(reminderId) {
         isLoading = true
@@ -124,6 +126,8 @@ fun EditReminderScreen(
             description = loaded.description.orEmpty()
             kind = loaded.kind
             status = loaded.status
+            repeatFrequency = loaded.recurrence?.frequency?.toFrequencyLabel() ?: "Weekly"
+            repeatDayOfWeek = loaded.recurrence?.dayOfWeek?.normalizedDayOfWeek() ?: 1
             (loaded.scheduledAtLocal
                 ?: loaded.recurrenceOccurrenceLocal
                 ?: ReminderRecurrenceInference.inferOccurrenceLocal(loaded)
@@ -131,6 +135,9 @@ fun EditReminderScreen(
                 runCatching {
                     val parsed = OffsetDateTime.parse(it)
                     dateText = parsed.toLocalDate().toString()
+                    if (loaded.recurrence?.dayOfWeek == null) {
+                        repeatDayOfWeek = parsed.toLocalDate().dayOfWeek.value
+                    }
                     if (loaded.schedulePrecision == "datetime" || loaded.scheduledAtLocal == null && !loaded.recurrence?.timeLocal.isNullOrBlank()) {
                         timeText = parsed.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))
                     }
@@ -251,7 +258,12 @@ fun EditReminderScreen(
                         endAtUtc = endUtc,
                         clearEndAt = reminder?.endAtLocal != null && endDateText.isBlank(),
                         schedulePrecision = precision,
-                        usedDefaultTime = usedDefaultTime
+                        usedDefaultTime = usedDefaultTime,
+                        recurrenceFrequency = if (reminder?.isRecurring == true) repeatFrequency.lowercase() else null,
+                        recurrenceIntervalCount = if (reminder?.isRecurring == true) 1 else null,
+                        recurrenceDayOfWeek = if (reminder?.isRecurring == true && repeatFrequency != "Daily") repeatDayOfWeek else null,
+                        clearRecurrenceDayOfWeek = reminder?.isRecurring == true && repeatFrequency == "Daily",
+                        clearRecurrenceDayOfMonth = reminder?.isRecurring == true
                     ),
                     notificationReplaceRequest = notificationReplaceRequest
                 )
@@ -373,7 +385,11 @@ fun EditReminderScreen(
                     if (reminder?.isRecurring == true) {
                         RepeatsSection(
                             reminder = reminder,
+                            repeatFrequency = repeatFrequency,
+                            repeatDayOfWeek = repeatDayOfWeek,
                             busy = seriesBusy,
+                            onFrequencyChange = { repeatFrequency = it },
+                            onDayChange = { repeatDayOfWeek = it },
                             onAction = { seriesAction = it }
                         )
                     }
@@ -714,30 +730,42 @@ private fun TimePickerField(
 }
 
 @Composable
-private fun RepeatsSection(reminder: Reminder?, busy: Boolean, onAction: (String) -> Unit) {
-    val recurrence = reminder?.recurrence
+private fun RepeatsSection(
+    reminder: Reminder?,
+    repeatFrequency: String,
+    repeatDayOfWeek: Int,
+    busy: Boolean,
+    onFrequencyChange: (String) -> Unit,
+    onDayChange: (Int) -> Unit,
+    onAction: (String) -> Unit
+) {
     var repeatFrequencyExpanded by remember { mutableStateOf(false) }
     var repeatDayExpanded by remember { mutableStateOf(false) }
-    val repeatFrequency = recurrence?.frequency?.replaceFirstChar { it.uppercase() } ?: "Repeating"
-    val repeatDay = recurrence?.let { recurrenceDayLabel(it) } ?: reminder?.recurrenceText.orEmpty()
+    val repeatDay = dayOfWeekName(repeatDayOfWeek)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         DropdownField(
             label = "Repeat frequency",
             value = repeatFrequency,
             expanded = repeatFrequencyExpanded,
-            options = listOf(repeatFrequency),
+            options = listOf("Daily", "Weekly", "Monthly"),
             onExpandedChange = { repeatFrequencyExpanded = it },
-            onSelected = { repeatFrequencyExpanded = false }
+            onSelected = {
+                onFrequencyChange(it)
+                repeatFrequencyExpanded = false
+            }
         )
-        if (repeatDay.isNotBlank()) {
+        if (repeatFrequency != "Daily") {
             DropdownField(
                 label = "Repeat day",
                 value = repeatDay,
                 expanded = repeatDayExpanded,
-                options = listOf(repeatDay),
+                options = dayOfWeekOptions.map { it.label },
                 onExpandedChange = { repeatDayExpanded = it },
-                onSelected = { repeatDayExpanded = false }
+                onSelected = { selected ->
+                    dayOfWeekOptions.firstOrNull { it.label == selected }?.let { onDayChange(it.value) }
+                    repeatDayExpanded = false
+                }
             )
         }
         reminder?.recurrenceText?.takeIf { it.isNotBlank() && it != repeatDay }?.let {
@@ -770,13 +798,17 @@ private fun RepeatsSection(reminder: Reminder?, busy: Boolean, onAction: (String
     }
 }
 
-private fun recurrenceDayLabel(recurrence: com.sam.lifelogger.data.Recurrence): String = when {
-    recurrence.frequency.equals("weekly", ignoreCase = true) && recurrence.dayOfWeek != null ->
-        dayOfWeekName(recurrence.dayOfWeek)
-    recurrence.frequency.equals("monthly", ignoreCase = true) && recurrence.dayOfMonth != null ->
-        "Day ${recurrence.dayOfMonth}"
-    else -> ""
-}
+private data class RepeatDayOption(val label: String, val value: Int)
+
+private val dayOfWeekOptions = listOf(
+    RepeatDayOption("Monday", 1),
+    RepeatDayOption("Tuesday", 2),
+    RepeatDayOption("Wednesday", 3),
+    RepeatDayOption("Thursday", 4),
+    RepeatDayOption("Friday", 5),
+    RepeatDayOption("Saturday", 6),
+    RepeatDayOption("Sunday", 7)
+)
 
 private fun dayOfWeekName(value: Int): String = when (value) {
     0, 7 -> "Sunday"
@@ -787,6 +819,19 @@ private fun dayOfWeekName(value: Int): String = when (value) {
     5 -> "Friday"
     6 -> "Saturday"
     else -> "Day $value"
+}
+
+private fun String.toFrequencyLabel(): String = when (lowercase()) {
+    "daily" -> "Daily"
+    "weekly" -> "Weekly"
+    "monthly" -> "Monthly"
+    else -> "Weekly"
+}
+
+private fun Int.normalizedDayOfWeek(): Int = when (this) {
+    0, 7 -> 7
+    in 1..6 -> this
+    else -> 1
 }
 
 @Composable

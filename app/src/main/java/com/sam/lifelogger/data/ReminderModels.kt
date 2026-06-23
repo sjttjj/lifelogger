@@ -320,7 +320,13 @@ data class ReminderPatch(
     val usedDefaultTime: Boolean? = null,
     val location: String? = null,
     val people: String? = null,
-    val amount: String? = null
+    val amount: String? = null,
+    val recurrenceFrequency: String? = null,
+    val recurrenceIntervalCount: Int? = null,
+    val recurrenceDayOfWeek: Int? = null,
+    val recurrenceDayOfMonth: Int? = null,
+    val clearRecurrenceDayOfWeek: Boolean = false,
+    val clearRecurrenceDayOfMonth: Boolean = false
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         title?.let { put("title", it) }
@@ -343,6 +349,18 @@ data class ReminderPatch(
         location?.let { put("location", it) }
         people?.let { put("people", it) }
         amount?.let { put("amount", it) }
+        recurrenceFrequency?.let { put("frequency", it) }
+        recurrenceIntervalCount?.let { put("interval_count", it) }
+        if (clearRecurrenceDayOfWeek) {
+            put("day_of_week", JSONObject.NULL)
+        } else {
+            recurrenceDayOfWeek?.let { put("day_of_week", it) }
+        }
+        if (clearRecurrenceDayOfMonth) {
+            put("day_of_month", JSONObject.NULL)
+        } else {
+            recurrenceDayOfMonth?.let { put("day_of_month", it) }
+        }
     }
 }
 

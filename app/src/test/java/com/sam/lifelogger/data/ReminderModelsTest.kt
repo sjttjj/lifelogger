@@ -186,6 +186,21 @@ class ReminderModelsTest {
     }
 
     @Test
+    fun serializesReminderPatchRecurrenceFields() {
+        val patch = ReminderPatch(
+            recurrenceFrequency = "weekly",
+            recurrenceIntervalCount = 1,
+            recurrenceDayOfWeek = 1,
+            clearRecurrenceDayOfMonth = true
+        ).toJson()
+
+        assertEquals("weekly", patch.getString("frequency"))
+        assertEquals(1, patch.getInt("interval_count"))
+        assertEquals(1, patch.getInt("day_of_week"))
+        assertTrue(patch.isNull("day_of_month"))
+    }
+
+    @Test
     fun roundTripsReminderThroughCacheEntities() {
         val reminder = Reminder(
             id = 7,
