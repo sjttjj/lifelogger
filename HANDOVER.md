@@ -1,6 +1,6 @@
 ﻿# Lifelogger Handover
 
-Generated: 2026-06-05. Latest update: 2026-06-19.
+Generated: 2026-06-05. Latest update: 2026-06-24.
 
 ## Latest Session Status — 2026-06-19
 
@@ -506,37 +506,118 @@ A test reminder for "tomorrow" was not found when asking "when is the next time 
 
 The current ask pipeline searches daily summary files, reminders, tasks, events, and WhatsApp messages. It does **not** search raw transcript segments or session_notes directly. If the app team means "all notes" as in raw transcripts/session notes, that is not implemented yet.
 
-### 5. Continuous Squeeze Re-Engagement Needs Physical Retesting
+### 5. Recurring Reminders Are Not Real Server Recurrence Series Yet
+
+Investigated on 2026-06-24 after test reminders such as "test my app every Tuesday" behaved like unsorted/one-off reminders.
+
+**Observed data:**
+- Device cache rows 61, 63, and 64 had `recurrenceText` values like `every Tuesday` / `every Monday`.
+- Those same rows had empty `recurrenceSeriesId`, empty `recurrenceOccurrenceLocal`, and empty `recurrenceJson`.
+- Server archived response for id 64 showed the same shape:
+  - `recurrence_text: "every Tuesday"`
+  - `scheduled_at_local: "2026-06-23T09:00:00+10:00"`
+  - `recurrence_series_id: null`
+  - `recurrence_occurrence_local: null`
+- Row 61 had `recurrence_text: "every Tuesday"` but was scheduled for Friday `2026-06-26T09:00:00+10:00`, so server extraction/backfill assigned the wrong concrete date.
+
+**Classification:** Primarily server-side / API contract gap.
+
+The app can infer a fallback date only from structured recurrence metadata. It intentionally does not parse free-text `recurrence_text` as the source of truth. The server should create/return a real recurrence series and a concrete first occurrence, for example:
+
+```json
+{
+  "is_recurring": true,
+  "recurrence_series_id": 123,
+  "recurrence_occurrence_local": "2026-06-30T09:00:00+10:00",
+  "recurrence": {
+    "id": 123,
+    "frequency": "weekly",
+    "interval_count": 1,
+    "day_of_week": 2,
+    "time_local": "09:00",
+    "timezone": "Australia/Sydney"
+  }
+}
+```
+
+Next session:
+- Fix server extraction so "every Tuesday" becomes structured weekly recurrence with `day_of_week = 2`.
+- Server should choose the closest not-past matching weekday as the first occurrence.
+- App should stop treating `recurrence_text` alone as a fully recurring reminder, or label it as "repeat text only" until structured recurrence exists.
+
+### 6. Recurring Done Does Not Advance To Next Occurrence
+
+Observed on 2026-06-24: marking a weekly test reminder done did not create/show the next Tuesday occurrence.
+
+**Evidence:**
+- The tested reminders were not actual recurrence series; they were one-off rows with `recurrence_text` only.
+- App `ReminderSyncManager.markDone()` calls `POST /api/reminders/{id}/actions/done`, then syncs upcoming reminders.
+- If the server does not create/return the next occurrence after done, the app has no next reminder to show.
+- `GET http://100.78.20.28:8000/openapi.json` did not list `/api/reminders/{id}/actions/done`, `/api/reminders/{id}/actions/cancel`, or `/api/recurrence-series/{id}` endpoints, even though the app attempts the action endpoints and falls back for some 404/405 cases.
+
+**Classification:** Server-side behavior plus API contract gap.
+
+Next session:
+- Confirm whether `POST /api/reminders/{id}/actions/done` exists in the live server despite being absent from OpenAPI.
+- Define expected recurring completion behavior:
+  - mark current occurrence done
+  - preserve history
+  - create/return the next pending occurrence for the same series
+  - include that next occurrence in `/api/reminders/upcoming`
+- If the server will not auto-create next occurrences, define an explicit app/server contract for generating the next occurrence.
+
+### 7. Calendar Done/Restore Swipe UX Can Look Like Items Disappeared
+
+Observed on 2026-06-24: swiping from Week/Month to done removes the item from Week/Month. After restoring and marking done again, it can look like the item disappeared.
+
+**Evidence from app code:**
+- Week/Month intentionally show only pending today/future reminders via `CalendarReminderFilters.weekMonthItems()`.
+- All intentionally shows every non-archived item via `CalendarReminderFilters.allItems()`.
+- After marking done from Week/Month, the app does not automatically switch to All.
+- All is grouped by original reminder date, so a done item with a past/original date may be present but not near the visible position.
+- `GET /api/reminders?status=all&limit=100` returned `{"reminders":[],"count":0}` during this investigation, so the app currently relies on cache fallback for All view.
+
+**Classification:** App-side UX issue unless server sync is dropping the row.
+
+Next session:
+- Decide desired UX after Week/Month swipe-to-done:
+  - auto-switch to All and scroll to the done item, or
+  - show snackbar text such as "Marked done. View in All.", or
+  - keep current behavior but add clearer status/date cues.
+- Verify/fix server `status=all` semantics so All view is not dependent on cache fallback.
+- Add debug logging around `markDone -> load -> allItems` if users still report missing done rows.
+
+### 8. Continuous Squeeze Re-Engagement Needs Physical Retesting
 
 After the first continuous squeeze → reminder → stop cycle, a subsequent continuous squeeze may not be recognized. Current tuning:
 - `CONTINUOUS_HIGH_PROGRESS = 0.95f`
 - `CONTINUOUS_HOLD_MS = 1000L`
 
-### 6. Reminder Mode Outlasts the Visible App
+### 9. Reminder Mode Outlasts the Visible App
 
 If the user starts reminder mode and backgrounds the app, the squeeze handler is unregistered in `onPause()`, so there's no way to stop reminder early without reopening the app. The 2-minute auto-stop still fires.
 
-### 7. Continuous Release Log Noise
+### 10. Continuous Release Log Noise
 
 High-frequency Elmyra progress callbacks produce ActivityManager broadcast warnings. Cosmetic only, no functional impact.
 
-### 8. Timer Does Not Reset Across Mode Switches
+### 11. Timer Does Not Reset Across Mode Switches
 
 Shows cumulative time since service start, not per-mode elapsed time.
 
-### 9. Wi-Fi Only (No Mobile Data)
+### 12. Wi-Fi Only (No Mobile Data)
 
 The user's Google Pixel 2 XL has no mobile data — it uses Wi-Fi only. The WorkManager upload constraint uses `NetworkType.UNMETERED`, which covers Wi-Fi. But if testing on a tether/hotspot that's metered, uploads would queue and never run.
 
-### 10. Session Recordings Not Displaying Correctly
+### 13. Session Recordings Not Displaying Correctly
 
 Session recordings (long continuous recordings with prompt-based processing) are not displaying correctly in the app UI. The exact nature of the display issue is not yet diagnosed — could be a grouping problem, a missing summary, or a rendering issue.
 
-### 11. Server Disk is Tight
+### 14. Server Disk is Tight
 
 Server `/` is at 97% usage (~3.1G free). Avoid large downloads, duplicate model caches, or bulk artifact generation.
 
-### 12. Server Process Management
+### 15. Server Process Management
 
 The live FastAPI server is a manual Python process while `voxtral.service` is inactive. Before deploying/restarting, confirm and stop/replace the manual process deliberately.
 
@@ -570,9 +651,10 @@ Primary server handoff documents:
 1. **Verify /transcribe endpoint** — Test if the server transcribe endpoint is now working (was returning 500). If fixed, test end-to-end upload flow.
 2. **Test reminder save against server** — Once `PUT /api/reminders/{id}/notifications` is deployed on server, test the full reminder edit/save flow.
 3. **Session recordings display fix** — Investigate and fix why session recordings don't display correctly in the app UI.
-4. **Build Habit reminders** — Recurring reminder support.
-5. **Build simple Workout tracker** — Exercise logging feature.
-6. **Add Financial alerts/news API** — Heaviest future item.
+4. **Calendar done UX** — Decide whether Week/Month swipe-to-done should auto-switch to All, show clearer snackbar copy, or add stronger done-location cues.
+5. **Build Habit reminders** — Recurring reminder support.
+6. **Build simple Workout tracker** — Exercise logging feature.
+7. **Add Financial alerts/news API** — Heaviest future item.
 
 ### Server-Side (Coordination Needed)
 
@@ -581,7 +663,10 @@ Primary server handoff documents:
 3. **Resolve prompt API mismatch** — Align app and server on prompt API contract (POST body vs URL path, name vs description fields).
 4. **Implement reminder endpoints** — `/api/reminders/upcoming`, `/api/reminders?status=pending&needs_review=true`, `PATCH /api/reminders/{id}`, `POST /api/reminders/{id}/notifications`, `PUT /api/reminders/{id}/notifications`.
 5. **Fix Ask AI issues** — Citations with negative answers, future reminders not found, raw transcript/session note search.
-6. **Free disk space** — Server is at 97% usage.
+6. **Make recurring reminders real recurrence series** — Parse "every Tuesday" into structured recurrence fields, choose the closest not-past matching first occurrence, and return `recurrence_series_id` / `recurrence_occurrence_local` / `recurrence`.
+7. **Define recurring done behavior** — `POST /api/reminders/{id}/actions/done` should mark the occurrence done and create/return the next pending occurrence, or the app/server contract needs a different explicit mechanism.
+8. **Fix `status=all` reminder query** — `GET /api/reminders?status=all` returned an empty list during testing, so the app is currently relying on local cache fallback for All view.
+9. **Free disk space** — Server is at 97% usage.
 
 ---
 
