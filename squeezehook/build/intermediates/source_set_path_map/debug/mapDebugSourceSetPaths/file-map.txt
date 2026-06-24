@@ -1,8 +1,0 @@
-com.sam.lifelogger.squeezehooks.squeezehook-pngs-0 G:\android_projects\lifelogger\squeezehook\build\generated\res\pngs\debug
-com.sam.lifelogger.squeezehooks.squeezehook-resValues-1 G:\android_projects\lifelogger\squeezehook\build\generated\res\resValues\debug
-com.sam.lifelogger.squeezehooks.squeezehook-updated_navigation_xml-2 G:\android_projects\lifelogger\squeezehook\build\generated\updated_navigation_xml\debug
-com.sam.lifelogger.squeezehooks.squeezehook-packageDebugResources-3 G:\android_projects\lifelogger\squeezehook\build\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.sam.lifelogger.squeezehooks.squeezehook-packageDebugResources-4 G:\android_projects\lifelogger\squeezehook\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.sam.lifelogger.squeezehooks.squeezehook-debug-5 G:\android_projects\lifelogger\squeezehook\build\intermediates\merged_res\debug\mergeDebugResources
-com.sam.lifelogger.squeezehooks.squeezehook-debug-6 G:\android_projects\lifelogger\squeezehook\src\debug\res
-com.sam.lifelogger.squeezehooks.squeezehook-main-7 G:\android_projects\lifelogger\squeezehook\src\main\res
